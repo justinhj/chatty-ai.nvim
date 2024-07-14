@@ -1,14 +1,12 @@
 rockspec_format = '3.0'
--- TODO: Rename this file and set the package
-package = "nvim-lua-plugin"
-version = "scm-1"
+package = "chatty-ai.nvim"
+version = "0.0.1"
 source = {
   -- TODO: Update this URL
-  url = "git+https://github.com/nvim-lua/nvim-lua-plugin-template"
+  url = "git+https://github.com/justinhj/chatty-ai.nvim"
 }
 dependencies = {
-  -- Add runtime dependencies here
-  -- e.g. "plenary.nvim",
+  "nvim-lua/plenary.nvim"
 }
 test_dependencies = {
   "nlua"
