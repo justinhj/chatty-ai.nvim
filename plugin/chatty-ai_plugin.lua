@@ -1,13 +1,13 @@
-if vim.fn.has("nvim-0.7.0") == 0 then
-  vim.api.nvim_err_writeln("my_awesome_plugin requires at least nvim-0.7.0.1")
+if vim.fn.has("nvim-0.9") == 0 then
+  vim.api.nvim_err_writeln("chatty-ai requires at least nvim-0.9")
   return
 end
 
 -- make sure this file is loaded only once
-if vim.g.loaded_battery_plugin then
+if vim.g.loaded_chatty_ai_plugin then
   return
 end
-vim.g.loaded_battery_plugin = 1
+vim.g.loaded_chatty_ai_plugin = 1
 
 -- create any global command that does not depend on user setup
 -- usually it is better to define most commands/mappings in the setup function

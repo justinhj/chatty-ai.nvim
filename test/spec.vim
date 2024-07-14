@@ -8,5 +8,5 @@ lua require('plenary.busted')
 lua require('matcher_combinators.luassert')
 
 " configuring the plugin
-runtime plugin/battery_plugin.lua
-lua require('battery').setup({})
+runtime plugin/chatty-ai.lua
+lua require('chatty-ai').setup({})
