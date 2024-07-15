@@ -56,4 +56,15 @@ For more than just info,warn and error logging you can enable debug logs which s
 
 Inspired by TODO
 
-Copyright (c) 2025 Justin Heyes-Jones
+## References
+
+### Claude AI
+
+### Open AI completinos
+
+https://platform.openai.com/docs/guides/text-generation?lang=curl
+
+## License and Copyright
+
+- Copyright (c) 2025 Justin Heyes-Jones
+- See the file [LICENSE](LICENSE) for copying permission.
