@@ -2,8 +2,8 @@
 
 ```
      _         _   _                 _ 
-  __| |_  __ _| |_| |_ _  _ ___ __ _(_)
- / _| ' \/ _` |  _|  _| || |___/ _` | |
+  __| |_  __ _| |_| |_ _  _     __ _(_)
+ / _| ' \/ _` |  _|  _| || |   / _` | |
  \__|_||_\__,_|\__|\__|\_, |   \__,_|_|
                        |__/
 ```
@@ -20,10 +20,6 @@
 ### Lua dependencies
 - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 
-**NOTICE** Please check the nvim-web-devicons repo for information on breaking changes to Nerd Fonts. This dependency is used to show the icons in this plugin and requires a compatible font. Thank you to Github user @david-0609 for bringing this to my attention and updating the icons used in this application. Should you encounter missing icons please upgrade the font you are using so it is using 2.3 or 3.0.
-
-_If you do not wish to upgrade your font you can pin to a previous version of the plugin using tag v0.8.0 instead of the main branch._
-
 ### OS dependencies
 
 ## Installation
@@ -39,7 +35,13 @@ Plug 'justinhj/chatty-ai.nvim'
 ### [Packer](https://github.com/wbthomason/packer.nvim)
 
 ```
-use { 'justinhj/battery.nvim', requires = {{'nvim-tree/nvim-web-devicons'}, {'nvim-lua/plenary.nvim'}}}
+use { 'justinhj/chatty-ai.nvim', requires = {{'nvim-lua/plenary.nvim'}} }
+```
+
+### [Lazy](https://github.com/folke/lazy.nvim)
+
+``` lua
+todo
 ```
 
 ## Configuration

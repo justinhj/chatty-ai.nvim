@@ -36,7 +36,7 @@ M.validate = function(config)
       return false, 'No api key found for ' .. config.global.service .. ' (environment variable ' .. config[config.global.service].api_key_env_name .. ')'
     else
       log.debug('Found api key ' .. value)
-      config.global.api_key_value = value
+      config[config.global.service].api_key_value = value
     end
   end
   log.debug('Config validated')
