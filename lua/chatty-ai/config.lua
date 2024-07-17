@@ -3,6 +3,25 @@ local M = {}
 local L = require('plenary.log')
 local log = L.new({ plugin = 'chatty-ai' })
 
+---@class CompletionConfig
+---@field system string
+---@field prompt string
+---@field service string|nil
+
+---@class GlobalConfig
+---@field timeout_ms number
+---@field service string
+
+---@class AnthropicConfig
+---@field version string
+---@field api_key_env_name string
+---@field api_key_value string?
+
+---@class Config
+---@field global GlobalConfig
+---@field anthropic AnthropicConfig
+
+---@type Config
 local default_config = {
   global = {
     timeout_ms = 5000,
@@ -19,6 +38,7 @@ M.known_services = {'anthropic'}
 M.current = default_config
 
 -- Validate the passed in config, or the current config
+-- @param config Config
 M.validate = function(config)
   if not config then
     config = M.current
@@ -35,7 +55,7 @@ M.validate = function(config)
     if not value then
       return false, 'No api key found for ' .. config.global.service .. ' (environment variable ' .. config[config.global.service].api_key_env_name .. ')'
     else
-      log.debug('Found api key ' .. value)
+      log.debug('Found api key')
       config[config.global.service].api_key_value = value
     end
   end
