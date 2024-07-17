@@ -14,8 +14,8 @@ function M.setup(opts)
   end
 end
 
-function M.complete(prompt)
-  return C.completion_job(prompt)
+function M.complete(prompt, completion_config)
+  return C.completion_job(prompt, completion_config)
 end
 
 return M

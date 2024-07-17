@@ -7,8 +7,11 @@ local config = require('chatty-ai.config')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 
-local anthropic_completion_job = function(prompt)
-  local loc = '/tmp/output.txt' -- todo
+---@param user_prompt string
+---@param completion_config CompletionConfig
+---@param anthropic_config AnthropicConfig
+local anthropic_completion_job = function(user_prompt, completion_config, anthropic_config)
+  local loc = '/tmp/output.txt' -- todo, not needed
   local done = false
   local res = nil
   local succ = nil
@@ -17,12 +20,12 @@ local anthropic_completion_job = function(prompt)
       model = 'claude-3-5-sonnet-20240620', -- todo config
       messages = {
         {
-          content = prompt,
+          content = completion_config.prompt .. ' ' .. user_prompt,
           role = 'user',
         },
       },
       max_tokens = 2000, -- note 4096 is the max
-      system = 'You are a brilliant software engineer that writes clear and simple code, but you should recommend optimizations or data structure changes if you see an opportunity. Your goal is to make the user happier because the code is so awesome and fit for purpose',
+      system = completion_config.system,
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
@@ -30,9 +33,9 @@ local anthropic_completion_job = function(prompt)
 
   curl.post(ANTHROPIC_URL, {
     headers = {
-      ['x-api-key'] = config.current.anthropic.api_key_value,
+      ['x-api-key'] = anthropic_config.api_key_value,
       ['content-type'] = 'application/json',
-      ['anthropic-version'] = config.current.anthropic.version,
+      ['anthropic-version'] = anthropic_config.version,
     },
     body = vim.fn.json_encode(body),
     output = loc,
@@ -103,12 +106,27 @@ end
 --   }
 -- }
 
+---@type table<string, fun(user_prompt: string, completion_config: CompletionConfig, service_config: OpenAIConfig|AnthropicConfig):string>
 local completion_jobs = {
   anthropic = anthropic_completion_job,
 }
 
-function M.completion_job(prompt)
-  completion_jobs[config.current.global.service](prompt)
+function M.completion_job(user_prompt, completion_config_name)
+  local completion_config = config.current.completion_configs[completion_config_name]
+  if completion_config == nil then
+    log.error('completion config not found for ' .. completion_config_name)
+    return
+  end
+
+  local service = completion_config.service
+  if service == nil then
+    service = config.current.global.default_service
+  end
+
+  local service_config = config.current.services[service]
+  if service_config.type == 'anthropic' then
+    completion_jobs[service](user_prompt, completion_config, service_config)
+  end
 end
 
 return M
