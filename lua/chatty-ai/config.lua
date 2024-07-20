@@ -44,7 +44,7 @@ local default_config = {
   completion_configs = {
     code_writer = {
       system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
-      prompt = 'chatty-ai',
+      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may concise comments to the code as needed to explain anything that is not obvious',
       service = 'anthropic',
     },
   },

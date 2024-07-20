@@ -11,7 +11,6 @@ local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
 local anthropic_completion_job = function(user_prompt, completion_config, anthropic_config)
-  local loc = '/tmp/output.txt' -- todo, not needed
   local done = false
   local res = nil
   local succ = nil
@@ -29,8 +28,6 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
-  log.debug(body)
-
   curl.post(ANTHROPIC_URL, {
     headers = {
       ['x-api-key'] = anthropic_config.api_key_value,
@@ -38,7 +35,6 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       ['anthropic-version'] = anthropic_config.version,
     },
     body = vim.fn.json_encode(body),
-    output = loc,
     callback = function(out)
       log.debug('completion callback')
       done = true
@@ -52,7 +48,15 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
   end,
   20000) -- todo config
 
-  log.debug(res)
+  local response = nil
+  if succ and res then
+    response = vim.fn.json_decode(res.body)
+    local content = response.content
+    if content[1].type == 'text' then
+      return content[1].text
+    end
+  end
+  return "" -- todo error handling
 end
 
 -- Anthropic API errors
@@ -123,10 +127,15 @@ function M.completion_job(user_prompt, completion_config_name)
     service = config.current.global.default_service
   end
 
+  -- TODO response should be a table with some useful information such as token usage
+  local text = ""
+
   local service_config = config.current.services[service]
   if service_config.type == 'anthropic' then
-    completion_jobs[service](user_prompt, completion_config, service_config)
+    text = completion_jobs[service](user_prompt, completion_config, service_config)
   end
+
+  log.debug(text)
 end
 
 return M
