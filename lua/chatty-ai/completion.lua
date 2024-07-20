@@ -115,6 +115,19 @@ local completion_jobs = {
   anthropic = anthropic_completion_job,
 }
 
+local function write_string_at_cursor(str)
+	local current_window = vim.api.nvim_get_current_win()
+	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
+	local row, col = cursor_position[1], cursor_position[2]
+
+	local lines = vim.split(str, "\n")
+	vim.api.nvim_put(lines, "c", true, true)
+
+	local num_lines = #lines
+	local last_line_length = #lines[num_lines]
+	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
+end
+
 function M.completion_job(user_prompt, completion_config_name)
   local completion_config = config.current.completion_configs[completion_config_name]
   if completion_config == nil then
@@ -134,8 +147,7 @@ function M.completion_job(user_prompt, completion_config_name)
   if service_config.type == 'anthropic' then
     text = completion_jobs[service](user_prompt, completion_config, service_config)
   end
-
-  log.debug(text)
+  write_string_at_cursor(text)
 end
 
 return M
