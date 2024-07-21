@@ -7,13 +7,102 @@ local config = require('chatty-ai.config')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 
+---@type Job
+M.current_job = nil
+
+local function write_string_at_cursor(str)
+	local current_window = vim.api.nvim_get_current_win()
+	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
+	local row, col = cursor_position[1], cursor_position[2]
+
+	local lines = vim.split(str, "\n")
+	vim.api.nvim_put(lines, "c", true, true)
+
+	local num_lines = #lines
+	local last_line_length = #lines[num_lines]
+	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
+end
+
+local function process_data_lines(line, process_data)
+	local json = line:match("^data: (.+)$")
+	if json then
+		local stop = false
+		if json == "[DONE]" then
+			return true
+		end
+		local data = vim.json.decode(json)
+    stop = data.type == "message_stop"
+		if stop then
+			return true
+		else
+			vim.schedule(function()
+				vim.cmd("undojoin") -- TODO what is this for
+				process_data(data)
+			end)
+		end
+	end
+	return false
+end
+
+local function process_anthropic_stream(error, data)
+  log.debug('received data ' .. vim.inspect(data))
+  log.debug('received error ' .. vim.inspect(error))
+	-- process_data_lines(buffer, function(data)
+	-- 	local content
+    -- if data.delta and data.delta.text then
+      -- content = data.delta.text
+    -- end
+	-- 	if content and content ~= vim.NIL then
+	-- 		write_string_at_cursor(content)
+	-- 	end
+	-- end)
+end
+
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
-local anthropic_completion_job = function(user_prompt, completion_config, anthropic_config)
+---@param is_stream boolean
+local anthropic_completion_job = function(user_prompt, completion_config, anthropic_config, is_stream)
   local done = false
   local res = nil
   local succ = nil
+
+  if M.current_job then
+    M.current_job:shutdown()
+    M.current_job = nil
+  end
+
+  local stream = nil
+  local complete_callback = nil
+  local error_callback = nil
+
+  if is_stream then
+    stream = process_anthropic_stream
+
+    error_callback = function(err)
+      log.error('error callback' .. tostring(err))
+      M.current_job = nil
+    end
+
+    complete_callback = function(out)
+      log.debug('completed streaming callback ' .. tostring(out))
+
+      vim.schedule(function()
+        -- write_string_at_cursor(out)
+        -- this is the full response from the job as a table with status, body, headers and exit
+        -- note that headers is a table but body is escaped json
+
+        vim.print(out)
+      end)
+    end
+  else
+    complete_callback = function(out)
+      log.debug('completion sync callback ' .. vim.inspect(out))
+      done = true
+      succ = out.status == 200
+      res = out
+    end
+  end
 
   local body = {
       model = 'claude-3-5-sonnet-20240620', -- todo config
@@ -28,25 +117,32 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
-  curl.post(ANTHROPIC_URL, {
+
+  M.current_job = curl.post(ANTHROPIC_URL, {
     headers = {
       ['x-api-key'] = anthropic_config.api_key_value,
       ['content-type'] = 'application/json',
       ['anthropic-version'] = anthropic_config.version,
     },
     body = vim.fn.json_encode(body),
-    callback = function(out)
-      log.debug('completion callback')
-      done = true
-      succ = out.status == 200 -- todo config
-      res = out
-    end,
+    stream = stream,
+    callback = complete_callback,
+    on_error = error_callback,
   })
+
+  log.debug('job started')
+
+  if stream then
+    log.debug('async return')
+    return "async job lol" -- todo
+  end
 
   vim.wait(config.current.global.timeout_ms, function()
     return done
   end,
-  20000) -- todo config
+  100) -- todo config interval and cancellation with key
+
+  log.debug('done waiting ' .. tostring(succ) .. ' ' .. tostring(res ~= nil))
 
   local response = nil
   if succ and res then
@@ -56,7 +152,7 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       return content[1].text
     end
   end
-  return "" -- todo error handling
+  return "error" -- todo error handling
 end
 
 -- Anthropic API errors
@@ -110,25 +206,15 @@ end
 --   }
 -- }
 
----@type table<string, fun(user_prompt: string, completion_config: CompletionConfig, service_config: OpenAIConfig|AnthropicConfig):string>
+---@type table<string, fun(user_prompt: string, completion_config: CompletionConfig, service_config: OpenAIConfig|AnthropicConfig, stream: boolean):string|Job>
 local completion_jobs = {
   anthropic = anthropic_completion_job,
 }
 
-local function write_string_at_cursor(str)
-	local current_window = vim.api.nvim_get_current_win()
-	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
-	local row, col = cursor_position[1], cursor_position[2]
-
-	local lines = vim.split(str, "\n")
-	vim.api.nvim_put(lines, "c", true, true)
-
-	local num_lines = #lines
-	local last_line_length = #lines[num_lines]
-	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
-end
-
-function M.completion_job(user_prompt, completion_config_name)
+---@param user_prompt string
+---@param completion_config_name string
+---@param should_stream boolean
+function M.completion_job(user_prompt, completion_config_name, should_stream)
   local completion_config = config.current.completion_configs[completion_config_name]
   if completion_config == nil then
     log.error('completion config not found for ' .. completion_config_name)
@@ -141,13 +227,14 @@ function M.completion_job(user_prompt, completion_config_name)
   end
 
   -- TODO response should be a table with some useful information such as token usage
-  local text = ""
+  -- but for now a string is fine
 
   local service_config = config.current.services[service]
-  if service_config.type == 'anthropic' then
-    text = completion_jobs[service](user_prompt, completion_config, service_config)
-  end
-  write_string_at_cursor(text)
+
+    local result = completion_jobs[service](user_prompt, completion_config, service_config, should_stream)
+    if type(result) == 'string' and not should_stream then -- TODO get rid of this
+      write_string_at_cursor(result)
+    end
 end
 
 return M

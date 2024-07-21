@@ -31,7 +31,7 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@type Config
 local default_config = {
   global = {
-    timeout_ms = 5000,
+    timeout_ms = 20000,
     default_service = 'anthropic',
   },
   services = {
