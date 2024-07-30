@@ -4,6 +4,7 @@ local L = require('plenary.log')
 local curl = require('plenary.curl')
 local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
+local sources = require('chatty-ai.sources')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -45,8 +46,10 @@ local function process_data_lines(line, process_data)
 end
 
 local function process_anthropic_stream(error, data)
-  log.debug('received data ' .. vim.inspect(data))
-  log.debug('received error ' .. vim.inspect(error))
+  if error then
+    log.debug('received error ' .. vim.inspect(error))
+  else
+
 	-- process_data_lines(buffer, function(data)
 	-- 	local content
     -- if data.delta and data.delta.text then
@@ -56,6 +59,7 @@ local function process_anthropic_stream(error, data)
 	-- 		write_string_at_cursor(content)
 	-- 	end
 	-- end)
+  end
 end
 
 ---@param user_prompt string
@@ -105,6 +109,7 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
   end
 
   local body = {
+      stream = is_stream,
       model = 'claude-3-5-sonnet-20240620', -- todo config
       messages = {
         {
@@ -156,14 +161,16 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
 end
 
 -- Anthropic API errors
--- 400 - invalid_request_error: There was an issue with the format or content of your request. We may also use this error type for other 4XX status codes not listed below.
--- 401 - authentication_error: There’s an issue with your API key.
--- 403 - permission_error: Your API key does not have permission to use the specified resource.
--- 404 - not_found_error: The requested resource was not found.
--- 413 - request_too_large: Request exceeds the maximum allowed number of bytes.
--- 429 - rate_limit_error: Your account has hit a rate limit.
--- 500 - api_error: An unexpected error has occurred internal to Anthropic’s systems.
--- 529 - overloaded_error: Anthropic’s API is temporarily overloaded.
+-- local status_codes = {
+--     [400] = {error_type = "invalid_request_error", message = "There was an issue with the format or content of your request. We may also use this error type for other 4XX status codes not listed below."},
+--     [401] = {error_type = "authentication_error", message = "There's an issue with your API key."},
+--     [403] = {error_type = "permission_error", message = "Your API key does not have permission to use the specified resource."},
+--     [404] = {error_type = "not_found_error", message = "The requested resource was not found."},
+--     [413] = {error_type = "request_too_large", message = "Request exceeds the maximum allowed number of bytes."},
+--     [429] = {error_type = "rate_limit_error", message = "Your account has hit a rate limit."},
+--     [500] = {error_type = "api_error", message = "An unexpected error has occurred internal to Anthropic's systems."},
+--     [529] = {error_type = "overloaded_error", message = "Anthropic's API is temporarily overloaded."}
+-- }
 
 -- Error response
 -- {
@@ -211,10 +218,16 @@ local completion_jobs = {
   anthropic = anthropic_completion_job,
 }
 
----@param user_prompt string
+---@param source_config_name string
 ---@param completion_config_name string
 ---@param should_stream boolean
-function M.completion_job(user_prompt, completion_config_name, should_stream)
+function M.completion_job(source_config_name, completion_config_name, should_stream)
+  local source_config = config.current.source_configs[source_config_name]
+  if source_config == nil then
+    log.error('source config not found: ' .. source_config_name)
+    return
+  end
+
   local completion_config = config.current.completion_configs[completion_config_name]
   if completion_config == nil then
     log.error('completion config not found for ' .. completion_config_name)
@@ -231,10 +244,14 @@ function M.completion_job(user_prompt, completion_config_name, should_stream)
 
   local service_config = config.current.services[service]
 
-    local result = completion_jobs[service](user_prompt, completion_config, service_config, should_stream)
+  local cb = function(prompt)
+    local result = completion_jobs[service](prompt, completion_config, service_config, should_stream)
     if type(result) == 'string' and not should_stream then -- TODO get rid of this
-      write_string_at_cursor(result)
+      write_string_at_cursor(result) -- TODO probably another callback
     end
+  end
+
+  sources.execute_sources(source_config, cb)
 end
 
 return M

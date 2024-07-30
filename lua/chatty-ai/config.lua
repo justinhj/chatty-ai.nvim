@@ -1,6 +1,7 @@
 local M = {}
 
 local L = require('plenary.log')
+local S = require('chatty-ai.sources')
 local log = L.new({ plugin = 'chatty-ai' })
 
 ---@class GlobalConfig
@@ -23,9 +24,12 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@field prompt string
 ---@field service string?
 
+---@alias SourceConfigFn function(function):string|nil
+
 ---@class Config
 ---@field global GlobalConfig
 ---@field services table<string, AnthropicConfig|OpenAIConfig>
+---@field source_configs table<string, table<SourceConfigFn>>
 ---@field completion_configs table<string, CompletionConfig>
 
 ---@type Config
@@ -40,6 +44,9 @@ local default_config = {
       version = '2023-06-01',
       api_key_env_name = 'ANTHROPIC_API_KEY',
     },
+  },
+  source_configs = {
+    prompt_ui = { S.prompt_ui },
   },
   completion_configs = {
     code_writer = {
