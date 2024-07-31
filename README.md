@@ -1,11 +1,14 @@
 # chatty-ai.nvim
 
 ```
-     _         _   _                 _ 
-  __| |_  __ _| |_| |_ _  _     __ _(_)
- / _| ' \/ _` |  _|  _| || |   / _` | |
- \__|_||_\__,_|\__|\__|\_, |   \__,_|_|
-                       |__/
+  _____ _           _   _                    _ 
+ /  __ \ |         | | | |                  (_)
+ | /  \/ |__   __ _| |_| |_ _   _      __ _  _ 
+ | |   | '_ \ / _` | __| __| | | |    / _` || |
+ | \__/\ | | | (_| | |_| |_| |_| |   | (_| || |
+  \____/_| |_|\__,_|\__|\__|\__, |    \__,_||_|
+                             __/ |             
+                            |___/              
 ```
 
 ## What?
@@ -60,11 +63,21 @@ Inspired by TODO
 
 ### Claude AI
 
+https://docs.anthropic.com/en/api/getting-started
+
 ### Open AI completinos
 
-https://platform.openai.com/docs/guides/text-generation?lang=curl
+Not supported yet
+
+https://platform.openai.com/docs/guides/text-generation
+
+### (Code)Llama
+
+Not supported yet
+
+https://ollama.com/library/codellama
 
 ## License and Copyright
 
-- Copyright (c) 2025 Justin Heyes-Jones
+- Copyright (c) 2024 Justin Heyes-Jones
 - See the file [LICENSE](LICENSE) for copying permission.
