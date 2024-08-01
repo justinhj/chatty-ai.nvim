@@ -11,6 +11,7 @@ local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 ---@type Job
 M.current_job = nil
 
+-- TODO move to targets
 local function write_string_at_cursor(str)
 	local current_window = vim.api.nvim_get_current_win()
 	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
@@ -218,6 +219,8 @@ local completion_jobs = {
   anthropic = anthropic_completion_job,
 }
 
+--TODO should_stream should be part of a new config called target_config
+
 ---@param source_config_name string
 ---@param completion_config_name string
 ---@param should_stream boolean
@@ -244,14 +247,19 @@ function M.completion_job(source_config_name, completion_config_name, should_str
 
   local service_config = config.current.services[service]
 
+  -- Note that because sources can be async, we must treat them all as async. The 
+  -- completion job needs this partial function which will be called with the result
+  -- of the execute sources call
+
   local cb = function(prompt)
     local result = completion_jobs[service](prompt, completion_config, service_config, should_stream)
     if type(result) == 'string' and not should_stream then -- TODO get rid of this
+      -- hard code a single output function, this can be configurable soon TODO
       write_string_at_cursor(result) -- TODO probably another callback
     end
   end
 
-  sources.execute_sources(source_config, cb)
+  sources.execute_sources(source_config, "", cb)
 end
 
 return M
