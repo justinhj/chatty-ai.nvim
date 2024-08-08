@@ -46,12 +46,18 @@ local default_config = {
     },
   },
   source_configs = {
-    prompt_ui = { S.prompt_ui },
+    input = { S.input },
+    selection = { S.selection },
   },
   completion_configs = {
     code_writer = {
       system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
-      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may concise comments to the code as needed to explain anything that is not obvious',
+      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer.',
+      service = 'anthropic',
+    },
+    code_explainer = {
+      system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
+      prompt = 'Please explain the following code.',
       service = 'anthropic',
     },
   },

@@ -77,6 +77,12 @@ Not supported yet
 
 https://ollama.com/library/codellama
 
+## Similar plugins
+
+https://github.com/frankroeder/parrot.nvim
+
+https://github.com/Robitx/gp.nvim
+
 ## License and Copyright
 
 - Copyright (c) 2024 Justin Heyes-Jones

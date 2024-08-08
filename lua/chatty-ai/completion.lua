@@ -114,7 +114,7 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       model = 'claude-3-5-sonnet-20240620', -- todo config
       messages = {
         {
-          content = completion_config.prompt .. ' ' .. user_prompt,
+          content = completion_config.prompt .. '\n' .. user_prompt,
           role = 'user',
         },
       },
@@ -123,6 +123,7 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
+  log.debug('body ' .. vim.inspect(body))
 
   M.current_job = curl.post(ANTHROPIC_URL, {
     headers = {
