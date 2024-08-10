@@ -15,7 +15,6 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@field api_key_value string?
 
 ---@class OpenAIConfig
----@field version string
 ---@field api_key_env_name string
 ---@field api_key_value string?
 
@@ -44,6 +43,10 @@ local default_config = {
       version = '2023-06-01',
       api_key_env_name = 'ANTHROPIC_API_KEY',
     },
+    openai = {
+      type = 'openai',
+      api_key_env_name = 'OPENAI_API_KEY',
+    },
   },
   source_configs = {
     input = { S.input },
@@ -54,6 +57,11 @@ local default_config = {
       system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
       prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer.',
       service = 'anthropic',
+    },
+    openai_code_writer = {
+      system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
+      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer.',
+      service = 'openai',
     },
     code_explainer = {
       system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
@@ -87,6 +95,7 @@ M.validate = function(config)
     return false, 'Unknown service provided as default ' .. config.global.default_service
   end
 
+  -- TODO needs more DRY
   -- Verify each defined service
   for service, service_config in pairs(config.services) do
     if service_config.type == 'anthropic' then
@@ -99,14 +108,23 @@ M.validate = function(config)
       if not value then
         return false, 'No api key found for ' .. service .. ' (environment variable ' .. c.api_key_env_name .. ')'
       else
-        log.debug('Found api key')
+        log.debug('Found api key for ' .. service)
         c.api_key_value = value
       end
-      elseif service_config.type == 'openai' then
-        ---@as OpenAIConfig
-        -- local c = service_config
-        log.debug('OpenAI service not implemented yet')
+    elseif service_config.type == 'openai' then
+      ---@as OpenAIConfig
+      local c = service_config
+      if not service_config.api_key_env_name then
+        return false, 'No api_key_env_name provided for ' .. service
       end
+      local value = os.getenv(c.api_key_env_name)
+      if not value then
+        return false, 'No api key found for ' .. service .. ' (environment variable ' .. c.api_key_env_name .. ')'
+      else
+        log.debug('Found api key for ' .. service)
+        c.api_key_value = value
+      end
+    end
   end
 
   log.debug('Config validated')
