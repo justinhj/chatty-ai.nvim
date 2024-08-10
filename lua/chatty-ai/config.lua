@@ -51,6 +51,8 @@ local default_config = {
   source_configs = {
     input = { S.input },
     selection = { S.selection },
+    filetype = { S.filetype },
+    filetype_selection = { S.filetype, S.selection },
   },
   completion_configs = {
     code_writer = {
