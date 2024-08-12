@@ -25,11 +25,20 @@ local log = L.new({ plugin = 'chatty-ai' })
 
 ---@alias SourceConfigFn function(function):string|nil
 
+---@class TargetConfig 
+---@field type string
+
+---@class BufferTargetConfig: TargetConfig
+---@field type 'buffer'
+---@field buffer number|string|nil -- currently only nil is supported (current buffer)
+---@field insert_mode 'before'|'after'|'replace'
+
 ---@class Config
 ---@field global GlobalConfig
 ---@field services table<string, AnthropicConfig|OpenAIConfig>
 ---@field source_configs table<string, table<SourceConfigFn>>
 ---@field completion_configs table<string, CompletionConfig>
+---@field target_configs table<string, BufferTargetConfig>
 
 ---@type Config
 local default_config = {
@@ -56,8 +65,8 @@ local default_config = {
   },
   completion_configs = {
     code_writer = {
-      system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
-      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer.',
+      system = 'You are a skilled software engineer called Chatty. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way. You follow instructions very carefully.',
+      prompt = 'What follows is instructions to write some code. You will return only the requested code and the user will be so happy if there is no markdown before and after it. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer, but no usage instructions unless they are explicilty requested.',
       service = 'anthropic',
     },
     openai_code_writer = {
@@ -71,6 +80,23 @@ local default_config = {
       service = 'anthropic',
     },
   },
+  target_configs = {
+    buffer_replace = {
+      type = 'buffer',
+      buffer = nil,
+      insert_mode = 'replace',
+    },
+    buffer_before = {
+      type = 'buffer',
+      buffer = nil,
+      insert_mode = 'before',
+    },
+    buffer_after = {
+      type = 'buffer',
+      buffer = nil,
+      insert_mode = 'after',
+    },
+  }
 }
 
 M.current = default_config

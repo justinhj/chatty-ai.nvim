@@ -5,6 +5,7 @@ local curl = require('plenary.curl')
 local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
 local sources = require('chatty-ai.sources')
+local targets = require('chatty-ai.targets')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -12,20 +13,7 @@ local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 ---@type Job
 M.current_job = nil
 
--- TODO move to targets
-local function write_string_at_cursor(str)
-	local current_window = vim.api.nvim_get_current_win()
-	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
-	local row, col = cursor_position[1], cursor_position[2]
-
-	local lines = vim.split(str, "\n")
-	vim.api.nvim_put(lines, "c", true, true)
-
-	local num_lines = #lines
-	local last_line_length = #lines[num_lines]
-	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
-end
-
+-- TODO move
 local function process_data_lines(line, process_data)
 	local json = line:match("^data: (.+)$")
 	if json then
@@ -350,8 +338,9 @@ local completion_jobs = {
 
 ---@param source_config_name string
 ---@param completion_config_name string
+---@param target_config_name string
 ---@param should_stream boolean
-function M.completion_job(source_config_name, completion_config_name, should_stream)
+function M.completion_job(source_config_name, completion_config_name, target_config_name, should_stream)
   local source_config = config.current.source_configs[source_config_name]
   if source_config == nil then
     log.error('source config not found: ' .. source_config_name)
@@ -361,6 +350,12 @@ function M.completion_job(source_config_name, completion_config_name, should_str
   local completion_config = config.current.completion_configs[completion_config_name]
   if completion_config == nil then
     log.error('completion config not found for ' .. completion_config_name)
+    return
+  end
+
+  local target_config = config.current.target_configs[target_config_name]
+  if target_config == nil then
+    log.error('target config not found for ' .. target_config_name)
     return
   end
 
@@ -378,11 +373,12 @@ function M.completion_job(source_config_name, completion_config_name, should_str
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
 
+  local target_cb = targets.get_target_callback(target_config, should_stream)
+
   local cb = function(prompt)
     local result = completion_jobs[service](prompt, completion_config, service_config, should_stream)
     if type(result) == 'string' and not should_stream then -- TODO get rid of this
-      -- hard code a single output function, this can be configurable soon TODO
-      write_string_at_cursor(result) -- TODO probably another callback
+      target_cb(result)
     end
   end
 
