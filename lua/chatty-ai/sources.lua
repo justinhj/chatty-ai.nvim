@@ -24,7 +24,7 @@ function M.filetype(callback)
   local filetype = FT.detect(vim.api.nvim_buf_get_name(0))
   if filetype then
     log.debug('got filetype: ' .. filetype)
-    callback('Guess the programming language from neovim filetype ' .. filetype)
+    callback('Guess the programming language from neovim filetype ' .. filetype .. '\n')
   else
     log.debug('no filetype detected')
     callback(nil)
