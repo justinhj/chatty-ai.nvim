@@ -22,6 +22,7 @@ local function write_string_at_cursor(str, mode)
 
 end
 
+-- TODO Streaming support
 function M.get_target_callback(target_config, should_stream)
   return function (result)
     if target_config.type == 'buffer' then

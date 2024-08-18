@@ -3,7 +3,6 @@ local M = {}
 local L = require('plenary.log')
 local curl = require('plenary.curl')
 local log = L.new({ plugin = 'chatty-ai' })
-local config = require('chatty-ai.config')
 local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 
@@ -57,7 +56,7 @@ end
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
 ---@param is_stream boolean
-local anthropic_completion_job = function(user_prompt, completion_config, anthropic_config, is_stream)
+M.anthropic_completion = function(user_prompt, completion_config, anthropic_config, is_stream, global_config)
   local done = false
   local res = nil
   local succ = nil
@@ -134,7 +133,7 @@ local anthropic_completion_job = function(user_prompt, completion_config, anthro
     return "async job lol" -- todo
   end
 
-  vim.wait(config.current.global.timeout_ms, function()
+  vim.wait(global_config.timeout_ms, function()
     return done
   end,
   100) -- todo config interval and cancellation with key
@@ -232,7 +231,7 @@ end
 ---@param completion_config CompletionConfig
 ---@param openai_config OpenAIConfig
 ---@param is_stream boolean
-local openai_completion_job = function(user_prompt, completion_config, openai_config, is_stream)
+M.openai_completion = function(user_prompt, completion_config, openai_config, is_stream, global_config)
   local done = false
   local res = nil
   local succ = nil
@@ -310,7 +309,7 @@ local openai_completion_job = function(user_prompt, completion_config, openai_co
     return "async job lol" -- todo
   end
 
-  vim.wait(config.current.global.timeout_ms, function()
+  vim.wait(global_config.timeout_ms, function()
     return done
   end,
   100) -- todo config interval and cancellation with key
@@ -328,46 +327,11 @@ local openai_completion_job = function(user_prompt, completion_config, openai_co
   end
   return "error" -- todo error handling, should call the targets error callback
 end
----@type table<string, fun(user_prompt: string, completion_config: CompletionConfig, service_config: OpenAIConfig|AnthropicConfig, stream: boolean):string|Job>
-local completion_jobs = {
-  anthropic = anthropic_completion_job,
-  openai = openai_completion_job,
-}
 
---TODO should_stream should be part of a new config called target_config
+--TODO DESIGN should_stream should be part of config called target_config?
 
----@param source_config_name string
----@param completion_config_name string
----@param target_config_name string
 ---@param should_stream boolean
-function M.completion_job(source_config_name, completion_config_name, target_config_name, should_stream)
-  local source_config = config.current.source_configs[source_config_name]
-  if source_config == nil then
-    log.error('source config not found: ' .. source_config_name)
-    return
-  end
-
-  local completion_config = config.current.completion_configs[completion_config_name]
-  if completion_config == nil then
-    log.error('completion config not found for ' .. completion_config_name)
-    return
-  end
-
-  local target_config = config.current.target_configs[target_config_name]
-  if target_config == nil then
-    log.error('target config not found for ' .. target_config_name)
-    return
-  end
-
-  local service = completion_config.service
-  if service == nil then
-    service = config.current.global.default_service
-  end
-
-  -- TODO response should be a table with some useful information such as token usage
-  -- but for now a string is fine
-
-  local service_config = config.current.services[service]
+function M.completion_job(global_config, service_config, source_config, completion_config, target_config, should_stream)
 
   -- Note that because sources can be async, we must treat them all as async. The 
   -- completion job needs this partial function which will be called with the result
@@ -376,8 +340,8 @@ function M.completion_job(source_config_name, completion_config_name, target_con
   local target_cb = targets.get_target_callback(target_config, should_stream)
 
   local cb = function(prompt)
-    local result = completion_jobs[service](prompt, completion_config, service_config, should_stream)
-    if type(result) == 'string' and not should_stream then -- TODO get rid of this
+    local result = service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config)
+    if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
       target_cb(result)
     end
   end
