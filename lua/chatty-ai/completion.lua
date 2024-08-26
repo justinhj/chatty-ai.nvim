@@ -35,10 +35,37 @@ local function process_data_lines(line, process_data)
 end
 
 -- TODO fix up
-local function process_anthropic_stream(error, data)
+local function process_anthropic_stream(error, chunk)
   if error then
-    log.debug('received error ' .. vim.inspect(error))
+    log.debug('received error in anthropic stream ' .. vim.inspect(error))
   else
+
+    -- local current_window = vim.api.nvim_get_current_win()
+    -- local cursor_position = vim.api.nvim_win_get_cursor(current_window)
+    -- local row, col = cursor_position[1], cursor_position[2]
+
+    local data_raw = string.match(chunk, "data: (.+)")
+    -- local event_name = string.match(chunk, "event: (.+)") -- useful if you want to act on event type
+
+    if data_raw then
+      local data = vim.json.decode(data_raw)
+
+      local content = ''
+      if data.delta and data.delta.text then
+        content = data.delta.text
+
+        local lines = vim.split(content, "\n")
+        vim.schedule(function ()
+          pcall(function() vim.cmd("undojoin") end)
+          vim.api.nvim_put(lines, "c", true, true)
+        end)
+      end
+    end
+
+    -- local num_lines = #lines
+    -- local last_line_length = #lines[num_lines]
+
+    -- vim.api.nvim_win_set_cursor(window, { row + num_lines - 1, col + last_line_length })
 
 	-- process_data_lines(buffer, function(data)
 	-- 	local content
@@ -100,7 +127,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
 
   local body = {
       stream = is_stream,
-      model = 'claude-3-5-sonnet-20240620', -- todo config
+      model = 'claude-3-5-sonnet-20240620', -- todo should be configurable
       messages = {
         {
           content = completion_config.prompt .. '\n' .. user_prompt,
@@ -130,7 +157,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
 
   if stream then
     log.debug('async return')
-    return "async job lol" -- todo
+    return "async job lol" -- todo does it read to return anything, if so what?
   end
 
   vim.wait(global_config.timeout_ms, function()

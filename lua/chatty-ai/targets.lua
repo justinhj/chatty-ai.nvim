@@ -1,15 +1,30 @@
 local M = {}
 
-local function write_string_at_cursor(str, mode)
+-- TODO this in progress
+-- Behaviour expected:
+-- If the buffer is new then create it
+-- Otherwise open it in the current window (optionally split v or regular)
+-- position the cursor at the end of the buffer or the beginning (before or after setting)
+-- if replace mode then select the whole buffer and delete before insterting
+-- put the text
+
+-- move to util if it's useful
+local function is_visual_mode()
+    local mode = vim.fn.mode()
+    return mode == 'v' or mode == 'V' or mode == '\22'
+end
+
+local function write_string_at_cursor(window, str, mode)
 
   -- NOTE DESIGN for async this should only be done once
+  -- TODO support for before and after
+  -- TODO test if insert mode is active in the buffer to determine how to replace it
   if mode == 'replace' then
     vim.api.nvim_command("normal! d")
     vim.api.nvim_command("normal! o")
   end
 
-	local current_window = vim.api.nvim_get_current_win()
-	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
+	local cursor_position = vim.api.nvim_win_get_cursor(window)
 	local row, col = cursor_position[1], cursor_position[2]
 
 	local lines = vim.split(str, "\n")
@@ -18,16 +33,44 @@ local function write_string_at_cursor(str, mode)
 	local num_lines = #lines
 	local last_line_length = #lines[num_lines]
 
-	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
+	vim.api.nvim_win_set_cursor(window, { row + num_lines - 1, col + last_line_length })
+end
 
+local function get_or_create_buffer(buffer, filetype)
+  if buffer == nil then
+    local current_window = vim.api.nvim_get_current_win()
+    local current_buffer = vim.api.nvim_win_get_buf(current_window)
+    return current_buffer
+  end
+
+  local bufnr = vim.fn.bufnr(buffer)
+  if bufnr == -1 then
+      -- Buffer doesn't exist, create it
+      bufnr = vim.fn.bufadd(buffer)
+      vim.fn.bufload(bufnr)
+  else
+    return bufnr
+  end
+  -- New buffer only set the filetype and other settings
+
+  if filetype then
+      vim.api.nvim_buf_set_option(bufnr, 'filetype', filetype)
+  end
+   -- Open the buffer in a new window if it's not already visible
+  if vim.fn.bufwinnr(bufnr) == -1 then
+      vim.cmd('buffer ' .. bufnr)
+  end
+  return bufnr
 end
 
 -- TODO Streaming support
 function M.get_target_callback(target_config, should_stream)
   return function (result)
     if target_config.type == 'buffer' then
-      local buffer = target_config.buffer
-      write_string_at_cursor(result, target_config.insert_mode)
+      -- TODO this is first pass and pretty awful
+      get_or_create_buffer(target_config.buffer, 'md')
+      local current_window = vim.api.nvim_get_current_win()
+      write_string_at_cursor(current_window, result, target_config.insert_mode)
     end
   end
 end

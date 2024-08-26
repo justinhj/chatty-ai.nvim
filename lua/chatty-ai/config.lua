@@ -66,6 +66,7 @@ local default_config = {
     selection = { S.selection },
     filetype = { S.filetype },
     filetype_selection = { S.filetype, S.selection },
+    filetype_input = { S.filetype, S.input },
   },
   completion_configs = {
     code_writer = {
@@ -95,6 +96,11 @@ local default_config = {
     buffer_after = {
       type = 'buffer',
       buffer = nil,
+      insert_mode = 'after',
+    },
+    chatty_buffer_after = {
+      type = 'buffer',
+      buffer = 'chatty-ai.md',
       insert_mode = 'after',
     },
   }
