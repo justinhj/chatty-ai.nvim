@@ -11,6 +11,12 @@ function M.shallowcopy(t)
   return copy
 end
 
+-- move to util if it's useful
+function M.is_visual_mode()
+    local mode = vim.fn.mode()
+    return mode == 'v' or mode == 'V' or mode == '\22'
+end
+
 -- This is based on similar code in the fzf-lua project with some modifications
 -- for chatty-ai. In particular if no lines are returned or we are not in visual
 -- mode we return nil, nil

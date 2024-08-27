@@ -67,15 +67,12 @@ local default_config = {
     filetype = { S.filetype },
     filetype_selection = { S.filetype, S.selection },
     filetype_input = { S.filetype, S.input },
+    filetype_selection_input = { S.filetype, S.selection, S.input },
   },
   completion_configs = {
     code_writer = {
       system = 'You are a skilled software engineer called Chatty. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way. You follow instructions very carefully.',
       prompt = 'What follows is instructions to write some code. You will return only the requested code and the user will be so happy if there is no markdown before and after it. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer, but no usage instructions unless they are explicilty requested.'
-    },
-    openai_code_writer = {
-      system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
-      prompt = 'What follows is instructions to write some code. You will return only code and no preamble. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer.'
     },
     code_explainer = {
       system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',

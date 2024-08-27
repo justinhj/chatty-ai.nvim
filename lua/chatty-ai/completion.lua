@@ -5,6 +5,7 @@ local curl = require('plenary.curl')
 local log = L.new({ plugin = 'chatty-ai' })
 local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
+local util = require('chatty-ai.util')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -13,39 +14,32 @@ local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 M.current_job = nil
 
 -- TODO move
-local function process_data_lines(line, process_data)
-	local json = line:match("^data: (.+)$")
-	if json then
-		local stop = false
-		if json == "[DONE]" then
-			return true
-		end
-		local data = vim.json.decode(json)
-    stop = data.type == "message_stop"
-		if stop then
-			return true
-		else
-			vim.schedule(function()
-				vim.cmd("undojoin") -- TODO what is this for
-				process_data(data)
-			end)
-		end
-	end
-	return false
-end
+-- local function process_data_lines(line, process_data)
+-- 	local json = line:match("^data: (.+)$")
+-- 	if json then
+-- 		local stop = false
+-- 		if json == "[DONE]" then
+-- 			return true
+-- 		end
+-- 		local data = vim.json.decode(json)
+--     stop = data.type == "message_stop"
+-- 		if stop then
+-- 			return true
+-- 		else
+-- 			vim.schedule(function()
+-- 				vim.cmd("undojoin") -- TODO what is this for
+-- 				process_data(data)
+-- 			end)
+-- 		end
+-- 	end
+-- 	return false
+-- end
 
--- TODO fix up
 local function process_anthropic_stream(error, chunk)
   if error then
     log.debug('received error in anthropic stream ' .. vim.inspect(error))
   else
-
-    -- local current_window = vim.api.nvim_get_current_win()
-    -- local cursor_position = vim.api.nvim_win_get_cursor(current_window)
-    -- local row, col = cursor_position[1], cursor_position[2]
-
     local data_raw = string.match(chunk, "data: (.+)")
-    -- local event_name = string.match(chunk, "event: (.+)") -- useful if you want to act on event type
 
     if data_raw then
       local data = vim.json.decode(data_raw)
@@ -61,21 +55,6 @@ local function process_anthropic_stream(error, chunk)
         end)
       end
     end
-
-    -- local num_lines = #lines
-    -- local last_line_length = #lines[num_lines]
-
-    -- vim.api.nvim_win_set_cursor(window, { row + num_lines - 1, col + last_line_length })
-
-	-- process_data_lines(buffer, function(data)
-	-- 	local content
-    -- if data.delta and data.delta.text then
-      -- content = data.delta.text
-    -- end
-	-- 	if content and content ~= vim.NIL then
-	-- 		write_string_at_cursor(content)
-	-- 	end
-	-- end)
   end
 end
 
@@ -108,13 +87,13 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
     complete_callback = function(out)
       log.debug('completed streaming callback ' .. tostring(out))
 
-      vim.schedule(function()
-        -- write_string_at_cursor(out)
-        -- this is the full response from the job as a table with status, body, headers and exit
-        -- note that headers is a table but body is escaped json
+      -- vim.schedule(function()
+      --   -- write_string_at_cursor(out)
+      --   -- this is the full response from the job as a table with status, body, headers and exit
+      --   -- note that headers is a table but body is escaped json
 
-        vim.print(out)
-      end)
+      --   vim.print(out)
+      -- end)
     end
   else
     complete_callback = function(out)
@@ -139,7 +118,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
-  log.debug('body ' .. vim.inspect(body))
+  -- log.debug('body ' .. vim.inspect(body))
 
   M.current_job = curl.post(ANTHROPIC_URL, {
     headers = {
@@ -157,13 +136,12 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
 
   if stream then
     log.debug('async return')
-    return "async job lol" -- todo does it read to return anything, if so what?
+    return
   end
 
   vim.wait(global_config.timeout_ms, function()
     return done
-  end,
-  100) -- todo config interval and cancellation with key
+  end, 100) -- todo config interval and cancellation with ESC key
 
   log.debug('done waiting ' .. tostring(succ) .. ' ' .. tostring(res ~= nil))
 
@@ -175,7 +153,6 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       return content[1].text
     end
   end
-  return "error" -- todo error handling
 end
 
 -- Anthropic API errors
@@ -359,6 +336,13 @@ end
 
 ---@param should_stream boolean
 function M.completion_job(global_config, service_config, source_config, completion_config, target_config, should_stream)
+
+  -- TODO at this point call something in targets that may take action based on the configuration
+  -- For a hacky example let's erase the current selection if there is one
+
+  if should_stream and util.is_visual_mode() then
+    vim.api.nvim_command("normal! d")
+  end
 
   -- Note that because sources can be async, we must treat them all as async. The 
   -- completion job needs this partial function which will be called with the result
