@@ -25,7 +25,7 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@field system string
 ---@field prompt string
 
----@alias SourceConfigFn function(function):string|nil
+---@alias SourceConfigFn function(function):table|string|nil
 
 ---@class TargetConfig 
 ---@field type string

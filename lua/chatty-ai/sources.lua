@@ -5,7 +5,12 @@ local L = require('plenary.log')
 local FT = require('plenary.filetype')
 local log = L.new({ plugin = 'chatty-ai' })
 
--- Sources provide ways to get the prompt to send to chatty; they return nil or a string prompt
+-- Sources provide ways to get the prompt to send to chatty; they return nil if they
+-- have nothing to add to the prompt, or a string prompt or a table that contains a
+-- list of entries matching the format of the chat history. See history.lua
+-- After gathering all the sources, all of the user prompts are concatenated together
+-- and consecutive user prompts are merged together (Since most message apis require
+-- alternating between user and assistant prompts)
 -- TODO DESIGN does it need to configure?
 function M.input(callback)
   vim.ui.input({prompt = 'Enter a prompt: '}, callback)
@@ -48,6 +53,8 @@ end
 
 -- Execute sources takes a list of sources and executes them, appending all the 
 -- prompts together before calling the callback
+-- As explained above prompts are either strings or tables. We convert the strings
+-- to tables and then ensure that all the user prompts are merged together
 
 ---@param source_configs table<SourceConfigFn>
 ---@param aggregate_prompt string|nil

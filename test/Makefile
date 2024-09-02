@@ -4,6 +4,13 @@ RUN=nvim --headless --noplugin -u spec.vim
 
 .PHONY: all nvim test watch prepare check
 
+# Check if entr is installed
+check_entr:
+	@command -v entr >/dev/null 2>&1 || { \
+		echo >&2 "entr is not installed. Please install it using your package manager."; \
+		exit 1; \
+	}
+
 check:
 	luacheck ../lua/ ./spec/
 
@@ -26,7 +33,7 @@ else
 	@$(RUN) -c "PlenaryBustedFile $(SPEC)"
 endif
 
-watch:
+watch: check_entr
 	@echo -e '\nRunning tests on "spec/**/*_spec.lua" when any Lua file on "../lua/" and "spec/" changes\n'
 	@find spec/ ../lua/ -name '*.lua' \
 	  | entr make test SPEC=$(SPEC)
