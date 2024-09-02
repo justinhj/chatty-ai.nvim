@@ -29,7 +29,7 @@ function M.filetype(callback)
   local filetype = FT.detect(vim.api.nvim_buf_get_name(0))
   if filetype then
     log.debug('got filetype: ' .. filetype)
-    callback('Guess the programming language from neovim filetype ' .. filetype .. '\n')
+    callback('Infer the programming language from the filetype: ' .. filetype)
   else
     log.debug('no filetype detected')
     callback(nil)
@@ -38,13 +38,16 @@ end
 
 local function execute_sources_internal(source_configs, aggregate_prompt, callback)
   log.debug('length of source configs is ' .. #source_configs)
-  aggregate_prompt = aggregate_prompt or ""
   if #source_configs == 0 then
     callback(aggregate_prompt)
   else
     local source = table.remove(source_configs, 1)
     local source_callback = function(input)
-      input = input or ""
+      if type(input) == 'string' then
+        table.insert(aggregate_prompt, {user = input})
+      elseif type(input) == 'table' then
+        table.insert(aggregate_prompt, input)
+      end
       execute_sources_internal(source_configs, aggregate_prompt .. input, callback)
     end
     source(source_callback)
@@ -57,11 +60,10 @@ end
 -- to tables and then ensure that all the user prompts are merged together
 
 ---@param source_configs table<SourceConfigFn>
----@param aggregate_prompt string|nil
-function M.execute_sources(source_configs, aggregate_prompt, callback)
+function M.execute_sources(source_configs, callback)
   -- Note that source configs table is mutated so we need to copy it
   local source_configs_copy = U.shallowcopy(source_configs)
-  execute_sources_internal(source_configs_copy, aggregate_prompt, callback)
+  execute_sources_internal(source_configs_copy, {}, callback)
 end
 
 return M

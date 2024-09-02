@@ -357,7 +357,7 @@ function M.completion_job(global_config, service_config, source_config, completi
     end
   end
 
-  sources.execute_sources(source_config, "", cb)
+  sources.execute_sources(source_config, cb)
 end
 
 return M
