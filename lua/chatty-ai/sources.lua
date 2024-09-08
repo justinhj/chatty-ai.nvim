@@ -1,6 +1,7 @@
 local M = {}
 
 local U = require('chatty-ai.util')
+local H = require('chatty-ai.history')
 local L = require('plenary.log')
 local FT = require('plenary.filetype')
 local log = L.new({ plugin = 'chatty-ai' })
@@ -39,16 +40,17 @@ end
 local function execute_sources_internal(source_configs, aggregate_prompt, callback)
   log.debug('length of source configs is ' .. #source_configs)
   if #source_configs == 0 then
-    callback(aggregate_prompt)
+    local aggregate_normalized_prompt = H.normalize_history(aggregate_prompt)
+    callback(aggregate_normalized_prompt)
   else
     local source = table.remove(source_configs, 1)
     local source_callback = function(input)
       if type(input) == 'string' then
-        table.insert(aggregate_prompt, {user = input})
+        table.insert(aggregate_prompt, {type = 'user', text = input})
       elseif type(input) == 'table' then
         table.insert(aggregate_prompt, input)
       end
-      execute_sources_internal(source_configs, aggregate_prompt .. input, callback)
+      execute_sources_internal(source_configs, aggregate_prompt, callback)
     end
     source(source_callback)
   end

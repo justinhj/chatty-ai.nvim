@@ -36,6 +36,7 @@ M.current_job = nil
 -- end
 
 local function process_anthropic_stream(error, chunk)
+  log.debug('anthropic stream processing')
   if error then
     log.debug('received error in anthropic stream ' .. vim.inspect(error))
   else
@@ -58,6 +59,16 @@ local function process_anthropic_stream(error, chunk)
   end
 end
 
+local function extract_text(history)
+    local result = {}
+    for _, entry in ipairs(history) do
+        if entry.text then
+            table.insert(result, entry.text)
+        end
+    end
+    return table.concat(result, '\n')
+end
+
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
@@ -66,6 +77,13 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   local done = false
   local res = nil
   local succ = nil
+
+  log.debug('user prompt ' .. vim.inspect(user_prompt))
+
+  -- Temporary, convert the user prompt to just a single user entry
+  user_prompt = extract_text(user_prompt)
+
+  log.debug('user prompt ' .. user_prompt)
 
   if M.current_job then
     M.current_job:shutdown()
@@ -85,7 +103,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
     end
 
     complete_callback = function(out)
-      log.debug('completed streaming callback ' .. tostring(out))
+      log.debug('completed streaming callback ' .. vim.inspect(out))
 
       -- vim.schedule(function()
       --   -- write_string_at_cursor(out)
@@ -113,12 +131,12 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           role = 'user',
         },
       },
-      max_tokens = 2000, -- note 4096 is the max
+      max_tokens = 4096,
       system = completion_config.system,
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }
 
-  -- log.debug('body ' .. vim.inspect(body))
+  log.debug('body ' .. vim.inspect(body))
 
   M.current_job = curl.post(ANTHROPIC_URL, {
     headers = {
@@ -339,7 +357,9 @@ function M.completion_job(global_config, service_config, source_config, completi
 
   -- TODO at this point call something in targets that may take action based on the configuration
   -- For a hacky example let's erase the current selection if there is one
+  -- it should generally just set things up for writing
 
+  -- When mode is streaming delete the visual selection and stream there
   if should_stream and util.is_visual_mode() then
     vim.api.nvim_command("normal! d")
   end

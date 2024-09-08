@@ -61,27 +61,28 @@ Inspired by TODO
 
 ## References
 
+### Ollama
+
+https://github.com/ollama/ollama/blob/main/docs/api.md
+https://ollama.com/library/codellama
+
 ### Claude AI
 
 https://docs.anthropic.com/en/api/getting-started
 
 ### Open AI completinos
 
-Not supported yet
-
 https://platform.openai.com/docs/guides/text-generation
 
-### (Code)Llama
-
-Not supported yet
-
-https://ollama.com/library/codellama
-
-## Similar plugins
+## Related plugins
 
 https://github.com/frankroeder/parrot.nvim
 
 https://github.com/Robitx/gp.nvim
+
+https://github.com/melbaldove/llm.nvim
+
+https://github.com/yacineMTB/dingllm.nvim
 
 ## License and Copyright
 

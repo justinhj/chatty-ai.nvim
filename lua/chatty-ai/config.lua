@@ -8,6 +8,8 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@class GlobalConfig
 ---@field timeout_ms number
 ---@field default_service string
+---@field history_file_name string
+---@field history_max_entries number
 
 ---@class AnthropicConfig
 ---@field type string
@@ -44,9 +46,12 @@ local log = L.new({ plugin = 'chatty-ai' })
 
 ---@type ChattyConfig
 local default_config = {
+  -- Global section affects every completion
   global = {
     timeout_ms = 20000,
     default_service = 'anthropic',
+    history_file_name = 'chatty-ai.json',
+    history_max_entries = 5,
   },
   services = {
     anthropic = {
@@ -103,8 +108,6 @@ local default_config = {
   }
 }
 
-M.current = default_config
-
 -- TODO util
 local function string_matches_table_key(tbl, str)
     for key, _ in pairs(tbl) do
@@ -117,10 +120,10 @@ end
 
 -- Validate the passed in config, or the current config
 -- @param config Config
-M.validate = function(config)
-  if not config then
-    config = M.current
-  end
+M.validate = function()
+  local config = vim.g.chatty_ai_config
+  assert(config)
+  assert(type(config) == 'table')
 
   -- Check that the default service is defined.
   -- It's ok if not unless the user tries to use it
@@ -162,12 +165,14 @@ M.validate = function(config)
     end
   end
 
+  vim.g.chatty_ai_config = config
+
   log.debug('Config validated')
   return true
 end
 
 M.from_user_opts = function(user_opts)
-  M.current = user_opts and vim.tbl_deep_extend('force', default_config, user_opts) or default_config
+  vim.g.chatty_ai_config = user_opts and vim.tbl_deep_extend('force', default_config, user_opts) or default_config
 end
 
 return M
