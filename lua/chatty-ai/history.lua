@@ -52,6 +52,7 @@ end
 function M.load_history()
   if(vim.g.chatty_ai_config.global.history_file_name == nil) then
     log.debug('no history file will not use history')
+    return nil
   end
   local path = get_or_create_chatty_path()
   local history_file_name = vim.g.chatty_ai_config.global.history_file_name
@@ -75,7 +76,8 @@ end
 
 function M.write_history(history)
   if(vim.g.chatty_ai_config.global.history_file_name == nil) then
-    log.debug('no history file will not write history')
+    log.error('no history file will not write history')
+    return nil
   end
   local path = get_or_create_chatty_path()
   local history_file_name = vim.g.chatty_ai_config.global.history_file_name
@@ -121,15 +123,19 @@ function M.normalize_history(history)
   return normalized_history
 end
 
--- Append a new entry to the chat history
-function M.append_entry(entry)
-  assert(type(entry) == 'table', 'entry must be a table')
-  assert(entry.type, 'entry must have a type field')
-  assert(entry.text, 'entry must have a text field')
-  assert(is_valid_type(entry.type), 'entry type must be "user" or "assistant"')
+-- Append a table of entries to the chat history
+function M.append_entries(entries)
+  assert(type(entries) == 'table', 'entries must be a table')
   local history = M.load_history()
-  table.insert(history, entry)
-  local new_history = M.normalize_history(history)
-  M.write_history(new_history)
+  if history ~= nil then
+    for _, entry in ipairs(entries) do
+      assert(entry.type, 'entry must have a type field')
+      assert(entry.text, 'entry must have a text field')
+      assert(is_valid_type(entry.type), 'entry type must be "user" or "assistant"')
+      table.insert(history, entry)
+    end
+    local new_history = M.normalize_history(history)
+    M.write_history(new_history)
+  end
 end
 return M

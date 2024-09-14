@@ -6,6 +6,7 @@ local log = L.new({ plugin = 'chatty-ai' })
 local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 local util = require('chatty-ai.util')
+local history = require('chatty-ai.history')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -81,6 +82,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   log.debug('user prompt ' .. vim.inspect(user_prompt))
 
   -- Temporary, convert the user prompt to just a single user entry
+  -- TODO this should convert the history table into the anthropic messages format
   user_prompt = extract_text(user_prompt)
 
   log.debug('user prompt ' .. user_prompt)
@@ -367,10 +369,11 @@ function M.completion_job(global_config, service_config, source_config, completi
   -- Note that because sources can be async, we must treat them all as async. The 
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
-
   local target_cb = targets.get_target_callback(target_config, should_stream)
-
   local cb = function(prompt)
+    -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
+    history.append_entries(prompt)
+
     local result = service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config)
     if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
       target_cb(result)
