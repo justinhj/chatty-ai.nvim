@@ -8,12 +8,6 @@ local M = {}
 -- if replace mode then select the whole buffer and delete before insterting
 -- put the text
 
--- move to util if it's useful
-local function is_visual_mode()
-    local mode = vim.fn.mode()
-    return mode == 'v' or mode == 'V' or mode == '\22'
-end
-
 local function write_string_at_cursor(window, str, mode)
 
   -- NOTE DESIGN for async this should only be done once
@@ -54,7 +48,7 @@ local function get_or_create_buffer(buffer, filetype)
   -- New buffer only set the filetype and other settings
 
   if filetype then
-      vim.api.nvim_buf_set_option(bufnr, 'filetype', filetype)
+      vim.api.nvim_set_option_value('filetype', filetype, { buf = bufnr })
   end
    -- Open the buffer in a new window if it's not already visible
   if vim.fn.bufwinnr(bufnr) == -1 then
@@ -63,15 +57,22 @@ local function get_or_create_buffer(buffer, filetype)
   return bufnr
 end
 
--- TODO Streaming support
-function M.get_target_callback(target_config, should_stream)
-  return function (result)
-    if target_config.type == 'buffer' then
+---@return function (): CompletionResult
+function M.get_callback(target_config)
+  if target_config.type == 'buffer' then
+    return function (result)
       -- TODO this is first pass and pretty awful
-      get_or_create_buffer(target_config.buffer, 'md')
-      local current_window = vim.api.nvim_get_current_win()
-      write_string_at_cursor(current_window, result, target_config.insert_mode)
+      -- get_or_create_buffer(target_config.buffer, 'md')
+      -- local current_window = vim.api.nvim_get_current_win()
+      -- write_string_at_cursor(current_window, result, target_config.insert_mode)
+      local lines = vim.split(result, "\n")
+      vim.schedule(function ()
+        pcall(function() vim.cmd("undojoin") end)
+        vim.api.nvim_put(lines, "c", true, true)
+      end)
     end
+  else
+    error("not implemented")
   end
 end
 

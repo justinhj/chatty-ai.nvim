@@ -11,6 +11,17 @@ local history = require('chatty-ai.history')
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
+---@enum CompletionResultType
+local CompletionResultType = {
+  FIRST = 1,
+  CONTINUATION = 2,
+  LAST = 3,
+}
+
+---@class CompletionResult
+---@field text string
+---@field type CompletionResultType
+
 ---@type Job
 M.current_job = nil
 
@@ -36,30 +47,6 @@ M.current_job = nil
 -- 	return false
 -- end
 
-local function process_anthropic_stream(error, chunk)
-  log.debug('anthropic stream processing')
-  if error then
-    log.debug('received error in anthropic stream ' .. vim.inspect(error))
-  else
-    local data_raw = string.match(chunk, "data: (.+)")
-
-    if data_raw then
-      local data = vim.json.decode(data_raw)
-
-      local content = ''
-      if data.delta and data.delta.text then
-        content = data.delta.text
-
-        local lines = vim.split(content, "\n")
-        vim.schedule(function ()
-          pcall(function() vim.cmd("undojoin") end)
-          vim.api.nvim_put(lines, "c", true, true)
-        end)
-      end
-    end
-  end
-end
-
 local function extract_text(history)
     local result = {}
     for _, entry in ipairs(history) do
@@ -74,7 +61,7 @@ end
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
 ---@param is_stream boolean
-M.anthropic_completion = function(user_prompt, completion_config, anthropic_config, is_stream, global_config)
+M.anthropic_completion = function(user_prompt, completion_config, anthropic_config, is_stream, global_config, on_complete)
   local done = false
   local res = nil
   local succ = nil
@@ -96,8 +83,33 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   local complete_callback = nil
   local error_callback = nil
 
+  local stream_callback = function (error, chunk)
+    log.debug('anthropic stream processing')
+    if error then
+      log.debug('received error in anthropic stream ' .. vim.inspect(error))
+    else
+      local data_raw = string.match(chunk, "data: (.+)")
+
+      if data_raw then
+        local data = vim.json.decode(data_raw)
+
+        local content = ''
+        if data.delta and data.delta.text then
+          content = data.delta.text
+          on_complete(content)
+
+          -- local lines = vim.split(content, "\n")
+          -- vim.schedule(function ()
+          --   pcall(function() vim.cmd("undojoin") end)
+          --   vim.api.nvim_put(lines, "c", true, true)
+          -- end)
+        end
+      end
+    end
+  end
+
   if is_stream then
-    stream = process_anthropic_stream
+    stream = stream_callback
 
     error_callback = function(err)
       log.error('error callback' .. tostring(err))
@@ -105,22 +117,26 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
     end
 
     complete_callback = function(out)
-      log.debug('completed streaming callback ' .. vim.inspect(out))
-
-      -- vim.schedule(function()
-      --   -- write_string_at_cursor(out)
-      --   -- this is the full response from the job as a table with status, body, headers and exit
-      --   -- note that headers is a table but body is escaped json
-
-      --   vim.print(out)
-      -- end)
+      -- note that the streaming call back just logs output for now
+      -- TODO it should return generic usage info
+      log.debug('streaming complete callback ' .. vim.inspect(out))
     end
   else
-    complete_callback = function(out)
-      log.debug('completion sync callback ' .. vim.inspect(out))
-      done = true
-      succ = out.status == 200
-      res = out
+    complete_callback = function (out)
+      log.debug('synchronous complete callback: ' .. tostring(out.status))
+      local content = nil
+      if out and out.status == 200 then
+        vim.schedule(function ()
+          local response = vim.fn.json_decode(out.body)
+          content = response.content
+          if content[1].type == 'text' then
+            on_complete(content[1].text)
+          else
+            -- TODO ???
+            on_complete("no text")
+          end
+        end)
+      end
     end
   end
 
@@ -154,25 +170,25 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
 
   log.debug('job started')
 
-  if stream then
-    log.debug('async return')
-    return
-  end
+  -- if stream then
+  --   log.debug('async return')
+  --   return
+  -- end
 
-  vim.wait(global_config.timeout_ms, function()
-    return done
-  end, 100) -- todo config interval and cancellation with ESC key
+  -- vim.wait(global_config.timeout_ms, function()
+  --   return done
+  -- end, 100) -- todo config interval and cancellation with ESC key
 
-  log.debug('done waiting ' .. tostring(succ) .. ' ' .. tostring(res ~= nil))
+  -- log.debug('done waiting ' .. tostring(succ) .. ' ' .. tostring(res ~= nil))
 
-  local response = nil
-  if succ and res then
-    response = vim.fn.json_decode(res.body)
-    local content = response.content
-    if content[1].type == 'text' then
-      return content[1].text
-    end
-  end
+  -- local response = nil
+  -- if succ and res then
+  --   response = vim.fn.json_decode(res.body)
+  --   local content = response.content
+  --   if content[1].type == 'text' then
+  --     return content[1].text
+  --   end
+  -- end
 end
 
 -- Anthropic API errors
@@ -369,18 +385,20 @@ function M.completion_job(global_config, service_config, source_config, completi
   -- Note that because sources can be async, we must treat them all as async. The 
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
-  local target_cb = targets.get_target_callback(target_config, should_stream)
-  local cb = function(prompt)
+  local target_cb = targets.get_callback(target_config)
+  local complete_cb = function(prompt)
     -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
     history.append_entries(prompt)
 
-    local result = service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config)
-    if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
-      target_cb(result)
-    end
+    -- local result =
+    service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
+
+    -- if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
+    --   target_cb(result)
+    -- end
   end
 
-  sources.execute_sources(source_config, cb)
+  sources.execute_sources(source_config, complete_cb)
 end
 
 return M
