@@ -119,7 +119,9 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
     complete_callback = function(out)
       -- note that the streaming call back just logs output for now
       -- TODO it should return generic usage info
-      log.debug('streaming complete callback ' .. vim.inspect(out))
+      log.debug('streaming complete callback')
+      -- TODO check for error response
+      -- data: {"type":"error","error":{"details":null,"type":"overloaded_error","message":"Overloaded"}
     end
   else
     complete_callback = function (out)

@@ -66,10 +66,10 @@ function M.get_callback(target_config)
       -- local current_window = vim.api.nvim_get_current_win()
       -- write_string_at_cursor(current_window, result, target_config.insert_mode)
       local lines = vim.split(result, "\n")
-      vim.schedule(function ()
+      -- vim.schedule(function ()
         pcall(function() vim.cmd("undojoin") end)
         vim.api.nvim_put(lines, "c", true, true)
-      end)
+      -- end)
     end
   else
     error("not implemented")
