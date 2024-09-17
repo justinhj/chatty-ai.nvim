@@ -1,5 +1,8 @@
 local M = {}
 
+local L = require('plenary.log')
+local log = L.new({ plugin = 'chatty-ai' })
+
 -- TODO this in progress
 -- Behaviour expected:
 -- If the buffer is new then create it
@@ -8,7 +11,20 @@ local M = {}
 -- if replace mode then select the whole buffer and delete before insterting
 -- put the text
 
-local function write_string_at_cursor(window, str, mode)
+local function write_string_at_cursor(str)
+	local current_window = vim.api.nvim_get_current_win()
+	local cursor_position = vim.api.nvim_win_get_cursor(current_window)
+	local row, col = cursor_position[1], cursor_position[2]
+
+	local lines = vim.split(str, "\n")
+	vim.api.nvim_put(lines, "c", true, true)
+
+	local num_lines = #lines
+	local last_line_length = #lines[num_lines]
+	vim.api.nvim_win_set_cursor(current_window, { row + num_lines - 1, col + last_line_length })
+end
+
+local function write_string_at_cursor_window(window, str, mode)
 
   -- NOTE DESIGN for async this should only be done once
   -- TODO support for before and after
@@ -65,11 +81,10 @@ function M.get_callback(target_config)
       -- get_or_create_buffer(target_config.buffer, 'md')
       -- local current_window = vim.api.nvim_get_current_win()
       -- write_string_at_cursor(current_window, result, target_config.insert_mode)
-      local lines = vim.split(result, "\n")
-      -- vim.schedule(function ()
-        pcall(function() vim.cmd("undojoin") end)
-        vim.api.nvim_put(lines, "c", true, true)
-      -- end)
+      -- log.debug('writing ' .. #result .. ' characters')
+      -- local lines = vim.split(result, "\n")
+      -- vim.api.nvim_put(lines, "c", true, true)
+      write_string_at_cursor(result)
     end
   else
     error("not implemented")

@@ -96,6 +96,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
         local content = ''
         if data.delta and data.delta.text then
           content = data.delta.text
+          log.debug('streaming ' .. content)
           on_complete(content)
 
           -- local lines = vim.split(content, "\n")
@@ -109,7 +110,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   end
 
   if is_stream then
-    stream = stream_callback
+    stream = vim.schedule_wrap(stream_callback)
 
     error_callback = function(err)
       log.error('error callback' .. tostring(err))
