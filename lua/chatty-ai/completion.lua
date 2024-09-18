@@ -11,41 +11,8 @@ local history = require('chatty-ai.history')
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
----@enum CompletionResultType
-local CompletionResultType = {
-  FIRST = 1,
-  CONTINUATION = 2,
-  LAST = 3,
-}
-
----@class CompletionResult
----@field text string
----@field type CompletionResultType
-
 ---@type Job
 M.current_job = nil
-
--- TODO move
--- local function process_data_lines(line, process_data)
--- 	local json = line:match("^data: (.+)$")
--- 	if json then
--- 		local stop = false
--- 		if json == "[DONE]" then
--- 			return true
--- 		end
--- 		local data = vim.json.decode(json)
---     stop = data.type == "message_stop"
--- 		if stop then
--- 			return true
--- 		else
--- 			vim.schedule(function()
--- 				vim.cmd("undojoin") -- TODO what is this for
--- 				process_data(data)
--- 			end)
--- 		end
--- 	end
--- 	return false
--- end
 
 local function extract_text(history)
     local result = {}
@@ -98,12 +65,6 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           content = data.delta.text
           log.debug('streaming ' .. content)
           on_complete(content)
-
-          -- local lines = vim.split(content, "\n")
-          -- vim.schedule(function ()
-          --   pcall(function() vim.cmd("undojoin") end)
-          --   vim.api.nvim_put(lines, "c", true, true)
-          -- end)
         end
       end
     end
@@ -152,7 +113,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           role = 'user',
         },
       },
-      max_tokens = 4096,
+      max_tokens = 4096, -- todo configurable for each service
       system = completion_config.system,
       temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
     }

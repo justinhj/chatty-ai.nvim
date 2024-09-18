@@ -22,7 +22,7 @@ end
 function M.setup(opts)
   opts = opts or {}
   config.from_user_opts(opts)
-  local result, err = config.validate(opts)
+  local result, err = config.validate()
   if not result then
     log.error('Failed to validate config: ' .. err)
     return
