@@ -13,7 +13,13 @@ local function setup_user_commands()
     function ()
       require('chatty-ai.history').show_history()
     end
-    ,{nargs = '?'})
+    ,{nargs = 0})
+
+  vim.api.nvim_create_user_command('ChattyHistoryClear',
+    function ()
+      require('chatty-ai.history').clear_history()
+    end
+    ,{nargs = 0})
 
   -- TODO user command to change the history file name
   -- so they can swap between different activities

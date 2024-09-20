@@ -5,6 +5,13 @@ local Path = require('plenary.path')
 
 local M = {}
 
+local function refresh_history(filename)
+  local bufnr = vim.fn.bufnr(filename)
+  if bufnr ~= -1 then
+    vim.api.nvim_command('checktime ' .. bufnr)
+  end
+end
+
 local valid_types = { 'user', 'assistant' }
 local function is_valid_type(type)
   for _, valid_type in ipairs(valid_types) do
@@ -28,9 +35,30 @@ local function get_or_create_chatty_path()
   return path
 end
 
+function M.clear_history()
+  if(vim.g.chatty_ai_config.global.history_file_name == nil) then
+    log.info('no history file will not use history')
+    return
+  end
+  local path = get_or_create_chatty_path()
+  local history_file_name = vim.g.chatty_ai_config.global.history_file_name
+
+  local p = Path:new(path .. '/' .. history_file_name)
+
+  local file = io.open(p.filename, 'w+')
+  if not file then
+    error('Could not create history file')
+  end
+  file:write(vim.fn.json_encode({}))
+  file:close()
+
+  vim.cmd('edit ' .. p.filename)
+end
+
 function M.show_history()
   if(vim.g.chatty_ai_config.global.history_file_name == nil) then
     log.info('no history file will not use history')
+    return
   end
   local path = get_or_create_chatty_path()
   local history_file_name = vim.g.chatty_ai_config.global.history_file_name
@@ -91,6 +119,8 @@ function M.write_history(history)
   file:write(vim.fn.json_encode(history))
   file:close()
 
+  refresh_history(p.filename)
+
   return history
 end
 
@@ -127,11 +157,13 @@ end
 function M.append_entries(entries)
   assert(type(entries) == 'table', 'entries must be a table')
   local history = M.load_history()
+  log.debug('appending entries to history: ' .. vim.inspect(entries))
   if history ~= nil then
     for _, entry in ipairs(entries) do
       assert(entry.type, 'entry must have a type field')
       assert(entry.text, 'entry must have a text field')
       assert(is_valid_type(entry.type), 'entry type must be "user" or "assistant"')
+      log.debug('appending entry: ' .. vim.inspect(entry))
       table.insert(history, entry)
     end
     local new_history = M.normalize_history(history)

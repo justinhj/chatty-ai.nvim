@@ -24,6 +24,34 @@ local function extract_text(history)
     return table.concat(result, '\n')
 end
 
+-- This works but not so hot on the error handling lol
+local function parse_anthropic_stream_completion(out)
+  local body = out.body
+  local lines = {}
+  local text = ""
+
+  -- Split the body by newlines
+  for line in body:gmatch("[^\r\n]+") do
+    table.insert(lines, line)
+  end
+
+  -- Process each line and gather the text and token information
+  for _, line in ipairs(lines) do
+    if not line:match("^event:") then
+      local stripped = line:gsub("^data: ", "")
+      local decoded = vim.fn.json_decode(stripped)
+      if decoded.type == "content_block_start" then
+        text = text .. decoded.content_block.text
+      elseif decoded.type == "content_block_delta" then
+        text = text .. decoded.delta.text
+      end
+
+    end
+  end
+
+  return text -- todo also return the tokens... sent, received, text
+end
+
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
@@ -82,8 +110,11 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       -- note that the streaming call back just logs output for now
       -- TODO it should return generic usage info
       log.debug('streaming complete callback')
-      -- TODO check for error response
-      -- data: {"type":"error","error":{"details":null,"type":"overloaded_error","message":"Overloaded"}
+      -- log.debug(vim.inspect(out))
+      vim.schedule(function ()
+        local response_text = parse_anthropic_stream_completion(out)
+        history.append_entries({{type = 'assistant', text = response_text}})
+      end)
     end
   else
     complete_callback = function (out)
