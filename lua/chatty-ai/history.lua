@@ -52,7 +52,10 @@ function M.clear_history()
   file:write(vim.fn.json_encode({}))
   file:close()
 
-  vim.cmd('edit ' .. p.filename)
+  -- Note this opens the buffer, including a new window for it even if it already has one
+  -- vim.cmd('edit ' .. p.filename)
+  -- This just reloads it if it is loaded
+  vim.cmd('checktime')
 end
 
 function M.show_history()

@@ -125,10 +125,10 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           local response = vim.fn.json_decode(out.body)
           content = response.content
           if content[1].type == 'text' then
+            history.append_entries({{type = 'assistant', text = content[1].text}})
             on_complete(content[1].text)
           else
-            -- TODO ???
-            on_complete("no text")
+            error('unexpected response type')
           end
         end)
       end
@@ -373,6 +373,7 @@ function M.completion_job(global_config, service_config, source_config, completi
   -- it should generally just set things up for writing
 
   -- When mode is streaming delete the visual selection and stream there
+  -- TODO this is probably fine for both modes now
   if should_stream and util.is_visual_mode() then
     vim.api.nvim_command("normal! d")
   end
@@ -381,8 +382,10 @@ function M.completion_job(global_config, service_config, source_config, completi
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
   local target_cb = targets.get_callback(target_config)
-  local complete_cb = function(prompt)
+  local completion_cb = function(prompt)
     -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
+    -- TODO should there be a history just in memory, a default history, lasting only for one execution?
+    -- This would be when no history file is set
     history.append_entries(prompt)
 
     -- local result =
@@ -393,7 +396,7 @@ function M.completion_job(global_config, service_config, source_config, completi
     -- end
   end
 
-  sources.execute_sources(source_config, complete_cb)
+  sources.execute_sources(source_config, completion_cb)
 end
 
 return M
