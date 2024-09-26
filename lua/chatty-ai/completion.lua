@@ -14,6 +14,8 @@ local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 ---@type Job
 M.current_job = nil
 
+-- TODO remove this, it's temporary to just take all text from history
+-- and submit as the prompt
 local function extract_text(history)
     local result = {}
     for _, entry in ipairs(history) do
@@ -30,26 +32,30 @@ local function parse_anthropic_stream_completion(out)
   local lines = {}
   local text = ""
 
-  -- Split the body by newlines
   for line in body:gmatch("[^\r\n]+") do
     table.insert(lines, line)
   end
 
-  -- Process each line and gather the text and token information
+  local input_tokens = 0
+  local output_tokens = 0
+
   for _, line in ipairs(lines) do
     if not line:match("^event:") then
       local stripped = line:gsub("^data: ", "")
-      local decoded = vim.fn.json_decode(stripped)
-      if decoded.type == "content_block_start" then
-        text = text .. decoded.content_block.text
-      elseif decoded.type == "content_block_delta" then
-        text = text .. decoded.delta.text
+      local data = vim.fn.json_decode(stripped)
+      if data.type == "content_block_start" then
+        text = text .. data.content_block.text
+      elseif data.type == "content_block_delta" then
+        text = text .. data.delta.text
+      elseif data.type == 'message_start' then
+        input_tokens = data.message.usage.input_tokens
+      elseif data.type == 'message_delta' and data.delta.stop_reason == 'end_turn' then
+        output_tokens = data.usage.output_tokens
       end
-
     end
   end
 
-  return text -- todo also return the tokens... sent, received, text
+  return text, input_tokens, output_tokens
 end
 
 ---@param user_prompt string
@@ -112,7 +118,9 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       log.debug('streaming complete callback')
       -- log.debug(vim.inspect(out))
       vim.schedule(function ()
-        local response_text = parse_anthropic_stream_completion(out)
+        -- TODO generic design for completion
+        local response_text, input_tokens, output_tokens = parse_anthropic_stream_completion(out)
+        log.debug('async callback token usage: ' .. input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
         history.append_entries({{type = 'assistant', text = response_text}})
       end)
     end
@@ -123,6 +131,9 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       if out and out.status == 200 then
         vim.schedule(function ()
           local response = vim.fn.json_decode(out.body)
+          -- log.debug(vim.inspect(out))
+          -- Just for info until I figure out the design for token reporting
+          log.debug('sync callback token usage: ' .. response.usage.input_tokens .. ' input tokens and ' .. response.usage.output_tokens .. ' output tokens')
           content = response.content
           if content[1].type == 'text' then
             history.append_entries({{type = 'assistant', text = content[1].text}})
@@ -239,7 +250,7 @@ end
 --   }
 -- }
 
--- Chat completion object (not streaming)
+-- ChatGPT completion object (not streaming)
 -- {
 --   "id": "chatcmpl-123",
 --   "object": "chat.completion",
