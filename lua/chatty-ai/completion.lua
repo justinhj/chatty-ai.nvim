@@ -121,6 +121,8 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
         -- TODO generic design for completion
         local response_text, input_tokens, output_tokens = parse_anthropic_stream_completion(out)
         log.debug('async callback token usage: ' .. input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
+        vim.g.last_input_tokens = input_tokens
+        vim.g.last_output_tokens = output_tokens
         history.append_entries({{type = 'assistant', text = response_text}})
       end)
     end
@@ -134,6 +136,8 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           -- log.debug(vim.inspect(out))
           -- Just for info until I figure out the design for token reporting
           log.debug('sync callback token usage: ' .. response.usage.input_tokens .. ' input tokens and ' .. response.usage.output_tokens .. ' output tokens')
+          vim.g.last_input_tokens = response.usage.input_tokens
+          vim.g.last_output_tokens = response.usage.output_tokens
           content = response.content
           if content[1].type == 'text' then
             history.append_entries({{type = 'assistant', text = content[1].text}})

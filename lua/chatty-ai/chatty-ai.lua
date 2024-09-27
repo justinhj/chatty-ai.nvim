@@ -25,6 +25,13 @@ local function setup_user_commands()
   -- so they can swap between different activities
 end
 
+-- TODO return the input and output tokens of the last request, stored in global state
+function M.get_status()
+  local last_input_tokens = vim.g.last_input_tokens or 0
+  local last_output_tokens = vim.g.last_output_tokens or 0
+  return ' >' .. tostring(last_input_tokens) .. ' <' .. tostring(last_output_tokens)
+end
+
 function M.setup(opts)
   opts = opts or {}
   config.from_user_opts(opts)
