@@ -58,6 +58,86 @@ local function parse_anthropic_stream_completion(out)
   return text, input_tokens, output_tokens
 end
 
+-- Generic configurable completion function
+-- TODO rename history everywhere as context
+-- TODO completion_config is for prompt and system, not needed here.
+-- TODO service_config would be the config of the provided service
+-- service_config members
+--   name - human readable name of the service
+--   stream_error_cb - call when streaming gives an error, nil if no stream support
+--   stream_complete_cb
+--   error_cb
+--   complete_cb
+--   configure_call
+M.completion = function(context, service_config, is_stream, global_config, on_complete)
+  local done = false
+  local res = nil
+  local succ = nil
+
+  -- Enforce one job at a time, but starting a new job cancels the former
+  if M.current_job then
+    M.current_job:shutdown()
+    M.current_job = nil
+  end
+
+  local stream = nil
+  local complete_callback = nil
+  local error_callback = nil
+
+  local stream_callback = function (error, chunk)
+    if error and service_config.stream_error_cb then
+      service_config.stream_error_cb(error)
+    elseif chunk and service_config.stream_cb then
+      service_config.stream_cb(chunk)
+    end
+  end
+
+  if is_stream then
+    stream = vim.schedule_wrap(stream_callback)
+
+    error_callback = function(error)
+      if service_config.error_cb then
+        service_config.error_cb(error)
+      end
+      M.current_job = nil
+    end
+
+    complete_callback = function(out)
+      vim.schedule(function ()
+        local response_text, input_tokens, output_tokens = service_config.stream_complete_cb(out)
+        vim.g.last_input_tokens = input_tokens
+        vim.g.last_output_tokens = output_tokens
+        history.append_entries({{type = 'assistant', text = response_text}})
+      end)
+    end
+  else
+    complete_callback = function (out)
+      local content = nil
+      if out and out.status == 200 then
+        vim.schedule(function ()
+          local response_text, input_tokens, output_tokens = service_config.complete_cb(out)
+          vim.g.last_input_tokens = input_tokens
+          vim.g.last_output_tokens = output_tokens
+          on_complete(response_text)
+          history.append_entries({{type = 'assistant', text = response_text}})
+        end)
+      end
+    end
+  end
+
+  -- TODO pass in config opts
+  local url, headers, body = service_config.configure_call(is_stream, context)
+
+  M.current_job = curl.post(url, {
+    headers = headers,
+    body = body,
+    stream = stream,
+    callback = complete_callback,
+    on_error = error_callback,
+  })
+end
+
+
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
 ---@param anthropic_config AnthropicConfig
