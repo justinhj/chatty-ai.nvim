@@ -8,8 +8,8 @@ local log = L.new({ plugin = 'chatty-ai' })
 ---@class GlobalConfig
 ---@field timeout_ms number
 ---@field default_service string
----@field history_file_name string
----@field history_max_entries number
+---@field context_file_name string
+---@field context_max_entries number
 
 ---@class AnthropicConfig
 ---@field type string
@@ -50,8 +50,8 @@ local default_config = {
   global = {
     timeout_ms = 20000,
     default_service = 'anthropic',
-    history_file_name = 'chatty-ai.json',
-    history_max_entries = 5,
+    context_file_name = 'chatty-ai.json',
+    context_max_entries = 5,
   },
   services = {
     anthropic = {

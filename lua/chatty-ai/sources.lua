@@ -1,14 +1,14 @@
 local M = {}
 
 local U = require('chatty-ai.util')
-local H = require('chatty-ai.history')
+local H = require('chatty-ai.context')
 local L = require('plenary.log')
 local FT = require('plenary.filetype')
 local log = L.new({ plugin = 'chatty-ai' })
 
 -- Sources provide ways to get the prompt to send to chatty; they return nil if they
 -- have nothing to add to the prompt, or a string prompt or a table that contains a
--- list of entries matching the format of the chat history. See history.lua
+-- list of entries matching the format of the chat context. See context.lua
 -- After gathering all the sources, all of the user prompts are concatenated together
 -- and consecutive user prompts are merged together (Since most message apis require
 -- alternating between user and assistant prompts)
@@ -40,7 +40,7 @@ end
 local function execute_sources_internal(source_configs, aggregate_prompt, callback)
   log.debug('length of source configs is ' .. #source_configs)
   if #source_configs == 0 then
-    local aggregate_normalized_prompt = H.normalize_history(aggregate_prompt)
+    local aggregate_normalized_prompt = H.normalize_context(aggregate_prompt)
     callback(aggregate_normalized_prompt)
   else
     local source = table.remove(source_configs, 1)

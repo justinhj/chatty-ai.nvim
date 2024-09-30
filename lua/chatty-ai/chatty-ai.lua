@@ -7,21 +7,21 @@ local completion = require('chatty-ai.completion')
 
 local function setup_user_commands()
 
-  -- Enable the user to bring the chat history into view
-  -- error if history name not set
-  vim.api.nvim_create_user_command('ChattyHistoryShow',
+  -- Enable the user to bring the chat context into view
+  -- error if context name not set
+  vim.api.nvim_create_user_command('ChattyContextShow',
     function ()
-      require('chatty-ai.history').show_history()
+      require('chatty-ai.context').show_context()
     end
     ,{nargs = 0})
 
-  vim.api.nvim_create_user_command('ChattyHistoryClear',
+  vim.api.nvim_create_user_command('ChattyContextClear',
     function ()
-      require('chatty-ai.history').clear_history()
+      require('chatty-ai.context').clear_context()
     end
     ,{nargs = 0})
 
-  -- TODO user command to change the history file name
+  -- TODO user command to change the context file name
   -- so they can swap between different activities
 end
 

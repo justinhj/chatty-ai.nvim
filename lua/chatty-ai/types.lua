@@ -1,0 +1,8 @@
+---@class CompletionServiceConfig
+---@field public name string
+---@field public stream_error_cb function
+---@field public stream_complete_cb function
+---@field public error_cb function
+---@field public complete_cb function
+---@field public stream_cb function
+---@field public configure_call function

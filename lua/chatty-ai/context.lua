@@ -1,11 +1,11 @@
--- Manages the chat history
+-- Manages the chat context
 local L = require('plenary.log')
 local log = L.new({ plugin = 'chatty-ai' })
 local Path = require('plenary.path')
 
 local M = {}
 
-local function refresh_history(filename)
+local function refresh_context(filename)
   local bufnr = vim.fn.bufnr(filename)
   if bufnr ~= -1 then
     vim.api.nvim_command('checktime ' .. bufnr)
@@ -35,19 +35,19 @@ local function get_or_create_chatty_path()
   return path
 end
 
-function M.clear_history()
-  if(vim.g.chatty_ai_config.global.history_file_name == nil) then
-    log.info('no history file will not use history')
+function M.clear_context()
+  if(vim.g.chatty_ai_config.global.context_file_name == nil) then
+    log.info('no context file will not use context')
     return
   end
   local path = get_or_create_chatty_path()
-  local history_file_name = vim.g.chatty_ai_config.global.history_file_name
+  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
 
-  local p = Path:new(path .. '/' .. history_file_name)
+  local p = Path:new(path .. '/' .. context_file_name)
 
   local file = io.open(p.filename, 'w+')
   if not file then
-    error('Could not create history file')
+    error('Could not create context file')
   end
   file:write(vim.fn.json_encode({}))
   file:close()
@@ -58,20 +58,20 @@ function M.clear_history()
   vim.cmd('checktime')
 end
 
-function M.show_history()
-  if(vim.g.chatty_ai_config.global.history_file_name == nil) then
-    log.info('no history file will not use history')
+function M.show_context()
+  if(vim.g.chatty_ai_config.global.context_file_name == nil) then
+    log.info('no context file will not use context')
     return
   end
   local path = get_or_create_chatty_path()
-  local history_file_name = vim.g.chatty_ai_config.global.history_file_name
+  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
 
-  local p = Path:new(path .. '/' .. history_file_name)
+  local p = Path:new(path .. '/' .. context_file_name)
 
   if not p:exists() then
     local file = io.open(p.filename, 'w+')
     if not file then
-      error('Could not create history file')
+      error('Could not create context file')
     end
     file:write(vim.fn.json_encode({}))
     file:close()
@@ -80,97 +80,96 @@ function M.show_history()
   vim.cmd('edit ' .. p.filename)
 end
 
-function M.load_history()
-  if(vim.g.chatty_ai_config.global.history_file_name == nil) then
-    log.debug('no history file will not use history')
+function M.load_context()
+  if(vim.g.chatty_ai_config.global.context_file_name == nil) then
+    log.debug('no context file will not use context')
     return nil
   end
   local path = get_or_create_chatty_path()
-  local history_file_name = vim.g.chatty_ai_config.global.history_file_name
+  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
 
-  local p = Path:new(path .. '/' .. history_file_name)
+  local p = Path:new(path .. '/' .. context_file_name)
 
   if not p:exists() then
-    log.debug('History not written yet')
+    log.debug('context not written yet')
     return {}
   end
 
   local file = io.open(p.filename, 'r')
   if not file then
-    error('Could not open history file')
+    error('Could not open context file')
   end
-  local history = vim.fn.json_decode(file:read('*a'))
+  local context = vim.fn.json_decode(file:read('*a'))
   file:close()
 
-  return history
+  return context
 end
 
-function M.write_history(history)
-  if(vim.g.chatty_ai_config.global.history_file_name == nil) then
-    log.error('no history file will not write history')
+function M.write_context(context)
+  if(vim.g.chatty_ai_config.global.context_file_name == nil) then
+    log.error('no context file will not write context')
     return nil
   end
   local path = get_or_create_chatty_path()
-  local history_file_name = vim.g.chatty_ai_config.global.history_file_name
+  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
 
-  local p = Path:new(path .. '/' .. history_file_name)
+  local p = Path:new(path .. '/' .. context_file_name)
 
   local file = io.open(p.filename, 'w+')
   if not file then
-    error('Could not open history file')
+    error('Could not open context file')
   end
-  file:write(vim.fn.json_encode(history))
+  file:write(vim.fn.json_encode(context))
   file:close()
 
-  refresh_history(p.filename)
+  refresh_context(p.filename)
 
-  return history
+  return context
 end
 
--- This takes care of ensuring a history alternates between user and assistant prompts
+-- This takes care of ensuring a context alternates between user and assistant prompts
 -- Consecutive user or assistant prompts are merged together
-function M.normalize_history(history)
-  assert(type(history) == 'table', 'history must be a table')
-  local normalized_history = {}
+function M.normalize_context(context)
+  assert(type(context) == 'table', 'context must be a table')
+  local normalized_context = {}
 
-  log.debug('normalizing ' .. vim.inspect(history))
+  log.debug('normalizing ' .. vim.inspect(context))
 
   local previous_type = nil
-  for _, entry in ipairs(history) do
+  for _, entry in ipairs(context) do
     if entry.type and is_valid_type(entry.type) then
       -- Merge consecutive entries of the same type
       if previous_type == entry.type then
-        local last_entry = normalized_history[#normalized_history]
+        local last_entry = normalized_context[#normalized_context]
         if last_entry.type == entry.type then
           last_entry.text = last_entry.text .. '\n' .. entry.text
         end
       else
-        table.insert(normalized_history, entry)
+        table.insert(normalized_context, entry)
       end
       previous_type = entry.type
     else
-      log.warn('history entry must have a type field with value "user" or "assistant"')
+      log.warn('context entry must have a type field with value "user" or "assistant"')
     end
   end
-
-  return normalized_history
+  return normalized_context
 end
 
--- Append a table of entries to the chat history
+-- Append a table of entries to the chat context
 function M.append_entries(entries)
   assert(type(entries) == 'table', 'entries must be a table')
-  local history = M.load_history()
-  log.debug('appending entries to history: ' .. vim.inspect(entries))
-  if history ~= nil then
+  local context = M.load_context()
+  log.debug('appending entries to context: ' .. vim.inspect(entries))
+  if context ~= nil then
     for _, entry in ipairs(entries) do
       assert(entry.type, 'entry must have a type field')
       assert(entry.text, 'entry must have a text field')
       assert(is_valid_type(entry.type), 'entry type must be "user" or "assistant"')
       log.debug('appending entry: ' .. vim.inspect(entry))
-      table.insert(history, entry)
+      table.insert(context, entry)
     end
-    local new_history = M.normalize_history(history)
-    M.write_history(new_history)
+    local new_context = M.normalize_context(context)
+    M.write_context(new_context)
   end
 end
 return M

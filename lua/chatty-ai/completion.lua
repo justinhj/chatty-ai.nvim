@@ -6,7 +6,7 @@ local log = L.new({ plugin = 'chatty-ai' })
 local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 local util = require('chatty-ai.util')
-local history = require('chatty-ai.history')
+local context = require('chatty-ai.context')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -14,16 +14,16 @@ local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 ---@type Job
 M.current_job = nil
 
--- TODO remove this, it's temporary to just take all text from history
+-- TODO remove this, it's temporary to just take all text from context
 -- and submit as the prompt
-local function extract_text(history)
-    local result = {}
-    for _, entry in ipairs(history) do
-        if entry.text then
-            table.insert(result, entry.text)
-        end
+local function extract_text(context)
+  local result = {}
+  for _, entry in ipairs(context) do
+    if entry.text then
+      table.insert(result, entry.text)
     end
-    return table.concat(result, '\n')
+  end
+  return table.concat(result, '\n')
 end
 
 -- This works but not so hot on the error handling lol
@@ -59,16 +59,10 @@ local function parse_anthropic_stream_completion(out)
 end
 
 -- Generic configurable completion function
--- TODO rename history everywhere as context
+-- TODO rename context everywhere as context
 -- TODO completion_config is for prompt and system, not needed here.
 -- TODO service_config would be the config of the provided service
--- service_config members
---   name - human readable name of the service
---   stream_error_cb - call when streaming gives an error, nil if no stream support
---   stream_complete_cb
---   error_cb
---   complete_cb
---   configure_call
+---@param service_config CompletionServiceConfig
 M.completion = function(context, service_config, is_stream, global_config, on_complete)
   local done = false
   local res = nil
@@ -84,7 +78,7 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
   local complete_callback = nil
   local error_callback = nil
 
-  local stream_callback = function (error, chunk)
+  local stream_callback = function(error, chunk)
     if error and service_config.stream_error_cb then
       service_config.stream_error_cb(error)
     elseif chunk and service_config.stream_cb then
@@ -103,23 +97,23 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
     end
 
     complete_callback = function(out)
-      vim.schedule(function ()
+      vim.schedule(function()
         local response_text, input_tokens, output_tokens = service_config.stream_complete_cb(out)
         vim.g.last_input_tokens = input_tokens
         vim.g.last_output_tokens = output_tokens
-        history.append_entries({{type = 'assistant', text = response_text}})
+        context.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
-    complete_callback = function (out)
+    complete_callback = function(out)
       local content = nil
       if out and out.status == 200 then
-        vim.schedule(function ()
+        vim.schedule(function()
           local response_text, input_tokens, output_tokens = service_config.complete_cb(out)
           vim.g.last_input_tokens = input_tokens
           vim.g.last_output_tokens = output_tokens
           on_complete(response_text)
-          history.append_entries({{type = 'assistant', text = response_text}})
+          context.append_entries({ { type = 'assistant', text = response_text } })
         end)
       end
     end
@@ -150,7 +144,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   log.debug('user prompt ' .. vim.inspect(user_prompt))
 
   -- Temporary, convert the user prompt to just a single user entry
-  -- TODO this should convert the history table into the anthropic messages format
+  -- TODO this should convert the context table into the anthropic messages format
   user_prompt = extract_text(user_prompt)
 
   log.debug('user prompt ' .. user_prompt)
@@ -164,7 +158,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   local complete_callback = nil
   local error_callback = nil
 
-  local stream_callback = function (error, chunk)
+  local stream_callback = function(error, chunk)
     log.debug('anthropic stream processing')
     if error then
       log.debug('received error in anthropic stream ' .. vim.inspect(error))
@@ -197,30 +191,32 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
       -- TODO it should return generic usage info
       log.debug('streaming complete callback')
       -- log.debug(vim.inspect(out))
-      vim.schedule(function ()
+      vim.schedule(function()
         -- TODO generic design for completion
         local response_text, input_tokens, output_tokens = parse_anthropic_stream_completion(out)
-        log.debug('async callback token usage: ' .. input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
+        log.debug('async callback token usage: ' ..
+        input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
         vim.g.last_input_tokens = input_tokens
         vim.g.last_output_tokens = output_tokens
-        history.append_entries({{type = 'assistant', text = response_text}})
+        context.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
-    complete_callback = function (out)
+    complete_callback = function(out)
       log.debug('synchronous complete callback: ' .. tostring(out.status))
       local content = nil
       if out and out.status == 200 then
-        vim.schedule(function ()
+        vim.schedule(function()
           local response = vim.fn.json_decode(out.body)
           -- log.debug(vim.inspect(out))
           -- Just for info until I figure out the design for token reporting
-          log.debug('sync callback token usage: ' .. response.usage.input_tokens .. ' input tokens and ' .. response.usage.output_tokens .. ' output tokens')
+          log.debug('sync callback token usage: ' ..
+          response.usage.input_tokens .. ' input tokens and ' .. response.usage.output_tokens .. ' output tokens')
           vim.g.last_input_tokens = response.usage.input_tokens
           vim.g.last_output_tokens = response.usage.output_tokens
           content = response.content
           if content[1].type == 'text' then
-            history.append_entries({{type = 'assistant', text = content[1].text}})
+            context.append_entries({ { type = 'assistant', text = content[1].text } })
             on_complete(content[1].text)
           else
             error('unexpected response type')
@@ -231,18 +227,18 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
   end
 
   local body = {
-      stream = is_stream,
-      model = 'claude-3-5-sonnet-20240620', -- todo should be configurable
-      messages = {
-        {
-          content = completion_config.prompt .. '\n' .. user_prompt,
-          role = 'user',
-        },
+    stream = is_stream,
+    model = 'claude-3-5-sonnet-20240620',   -- todo should be configurable
+    messages = {
+      {
+        content = completion_config.prompt .. '\n' .. user_prompt,
+        role = 'user',
       },
-      max_tokens = 4096, -- todo configurable for each service
-      system = completion_config.system,
-      temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
-    }
+    },
+    max_tokens = 4096,   -- todo configurable for each service
+    system = completion_config.system,
+    temperature = 1.0,   -- between 0.0 and 1.0 where higher is more creative
+  }
 
   log.debug('body ' .. vim.inspect(body))
 
@@ -406,18 +402,18 @@ M.openai_completion = function(user_prompt, completion_config, openai_config, is
 
   -- TODO system prompt should be added in the body as a message
   local body = {
-      stream = is_stream,
-      model = 'gpt-4o', -- todo config
-      messages = {
-        {
-          content = completion_config.prompt .. '\n' .. user_prompt,
-          role = 'user',
-        },
+    stream = is_stream,
+    model = 'gpt-4o',   -- todo config
+    messages = {
+      {
+        content = completion_config.prompt .. '\n' .. user_prompt,
+        role = 'user',
       },
-      max_tokens = 2000, -- note 4096 is the max
-      -- system = completion_config.system,
-      temperature = 1.0, -- between 0.0 and 1.0 where higher is more creative
-    }
+    },
+    max_tokens = 2000,   -- note 4096 is the max
+    -- system = completion_config.system,
+    temperature = 1.0,   -- between 0.0 and 1.0 where higher is more creative
+  }
 
   log.debug('body ' .. vim.inspect(body))
 
@@ -440,9 +436,9 @@ M.openai_completion = function(user_prompt, completion_config, openai_config, is
   end
 
   vim.wait(global_config.timeout_ms, function()
-    return done
-  end,
-  100) -- todo config interval and cancellation with key
+      return done
+    end,
+    100) -- todo config interval and cancellation with key
 
   log.debug('done waiting ' .. tostring(succ) .. ' ' .. tostring(res ~= nil))
 
@@ -462,7 +458,6 @@ end
 
 ---@param should_stream boolean
 function M.completion_job(global_config, service_config, source_config, completion_config, target_config, should_stream)
-
   -- TODO at this point call something in targets that may take action based on the configuration
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
@@ -473,15 +468,15 @@ function M.completion_job(global_config, service_config, source_config, completi
     vim.api.nvim_command("normal! d")
   end
 
-  -- Note that because sources can be async, we must treat them all as async. The 
+  -- Note that because sources can be async, we must treat them all as async. The
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
   local target_cb = targets.get_callback(target_config)
   local completion_cb = function(prompt)
     -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
-    -- TODO should there be a history just in memory, a default history, lasting only for one execution?
-    -- This would be when no history file is set
-    history.append_entries(prompt)
+    -- TODO should there be a context just in memory, a default context, lasting only for one execution?
+    -- This would be when no context file is set
+    context.append_entries(prompt)
 
     -- local result =
     service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
