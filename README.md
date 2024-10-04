@@ -44,7 +44,12 @@ use { 'justinhj/chatty-ai.nvim', requires = {{'nvim-lua/plenary.nvim'}} }
 ### [Lazy](https://github.com/folke/lazy.nvim)
 
 ``` lua
-todo
+-- chatty-ai.nvim
+require("chatty-ai").setup({})
+
+{ "justinhj/chatty-ai.nvim",
+  dependencies = { { "nvim-lua/plenary.nvim" } },
+},
 ```
 
 ## Configuration
@@ -57,9 +62,7 @@ For more than just info,warn and error logging you can enable debug logs which s
 
 `DEBUG_PLENARY=true nvim`
 
-Inspired by TODO
-
-## References
+## References and inspirations
 
 ### Ollama
 

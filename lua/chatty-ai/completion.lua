@@ -462,6 +462,14 @@ function M.completion_job(global_config, service_config, source_config, completi
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
 
+
+  log.debug('service config ' .. vim.inspect(service_config))
+  log.debug('global config ' .. vim.inspect(global_config))
+  log.debug('source config ' .. vim.inspect(source_config))
+  log.debug('completion config ' .. vim.inspect(completion_config))
+  log.debug('target config ' .. vim.inspect(target_config))
+
+  if false then
   -- When mode is streaming delete the visual selection and stream there
   -- TODO this is probably fine for both modes now
   if should_stream and util.is_visual_mode() then
@@ -487,6 +495,7 @@ function M.completion_job(global_config, service_config, source_config, completi
   end
 
   sources.execute_sources(source_config, completion_cb)
+  end
 end
 
 return M
