@@ -5,6 +5,8 @@ local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
 local completion = require('chatty-ai.completion')
 
+-- TODO maybe rename core
+
 local function setup_user_commands()
 
   -- Enable the user to bring the chat history into view

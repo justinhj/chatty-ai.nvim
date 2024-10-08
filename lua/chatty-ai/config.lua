@@ -1,9 +1,9 @@
 local M = {}
 
 local L = require('plenary.log')
+local log = L.new({ plugin = 'chatty-ai' })
 local S = require('chatty-ai.sources')
 local C = require('chatty-ai.completion')
-local log = L.new({ plugin = 'chatty-ai' })
 
 ---@class GlobalConfig
 ---@field timeout_ms number

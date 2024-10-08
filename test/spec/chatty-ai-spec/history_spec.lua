@@ -10,7 +10,7 @@ describe('history normalize', function()
   it('does not change valid history', function()
     local normal_history = {
       {
-        type = 'prompt',
+        type = 'user',
         text = 'lintf is not a valid function'
       },
       {
@@ -18,7 +18,7 @@ describe('history normalize', function()
         text = 'neovim buffer type cs'
       },
       {
-        type = 'prompt',
+        type = 'user',
         text = 'Please fix the following code. void main() { lintf("poop\n"); }'
       },
     }
@@ -29,21 +29,21 @@ describe('history normalize', function()
   it('collapses when all prompts', function()
     local history = {
       {
-        type = 'prompt',
+        type = 'user',
         text = 'lintf is not a valid function'
       },
       {
-        type = 'prompt',
+        type = 'user',
         text = 'neovim buffer type cs'
       },
       {
-        type = 'prompt',
+        type = 'user',
         text = 'Please fix the following code. void main() { lintf("poop\n"); }'
       },
     }
     local expected = {
       {
-        type = 'prompt',
+        type = 'user',
         text = 'lintf is not a valid function\n' ..
                 'neovim buffer type cs\n' ..
                 'Please fix the following code. void main() { lintf("poop\n"); }'
@@ -64,7 +64,7 @@ describe('history normalize', function()
         text = 'neovim buffer type cs'
       },
       {
-        type = 'prompt',
+        type = 'user',
         text = 'Please fix the following code. void main() { lintf("poop\n"); }'
       },
     }
@@ -75,7 +75,7 @@ describe('history normalize', function()
                 'neovim buffer type cs'
       },
       {
-        type = 'prompt',
+        type = 'user',
         text = 'Please fix the following code. void main() { lintf("poop\n"); }'
       },
     }
