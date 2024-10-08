@@ -24,9 +24,9 @@ M.unregister_service = function(name)
 end
 
 M.list_services = function()
-  local texts = { { "Services", 'Title' } }
-  for i,s in ipairs(M.services) do
-    table.insert(texts, { i, 'Normal' })
+  local texts = { { "Services\n", 'Title' } }
+  for name,source in pairs(M.services) do
+    table.insert(texts, { name .. '\n', 'Normal' })
   end
   vim.api.nvim_echo(texts, false, {})
 end
