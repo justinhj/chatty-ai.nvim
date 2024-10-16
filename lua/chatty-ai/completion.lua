@@ -7,6 +7,7 @@ local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 local util = require('chatty-ai.util')
 local context = require('chatty-ai.context')
+local services = require('chatty-ai.services')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 local OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -99,8 +100,8 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
     complete_callback = function(out)
       vim.schedule(function()
         local response_text, input_tokens, output_tokens = service_config.stream_complete_cb(out)
-        vim.g.last_input_tokens = input_tokens
-        vim.g.last_output_tokens = output_tokens
+        vim.g.chatty_ai_last_input_tokens = input_tokens
+        vim.g.chatty_ai_last_output_tokens = output_tokens
         context.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
@@ -110,8 +111,8 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
       if out and out.status == 200 then
         vim.schedule(function()
           local response_text, input_tokens, output_tokens = service_config.complete_cb(out)
-          vim.g.last_input_tokens = input_tokens
-          vim.g.last_output_tokens = output_tokens
+          vim.g.chatty_ai_last_input_tokens = input_tokens
+          vim.g.chatty_ai_last_output_tokens = output_tokens
           on_complete(response_text)
           context.append_entries({ { type = 'assistant', text = response_text } })
         end)
@@ -196,8 +197,8 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
         local response_text, input_tokens, output_tokens = parse_anthropic_stream_completion(out)
         log.debug('async callback token usage: ' ..
         input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
-        vim.g.last_input_tokens = input_tokens
-        vim.g.last_output_tokens = output_tokens
+        vim.g.chatty_ai_last_input_tokens = input_tokens
+        vim.g.chatty_ai_last_output_tokens = output_tokens
         context.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
@@ -212,8 +213,8 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           -- Just for info until I figure out the design for token reporting
           log.debug('sync callback token usage: ' ..
           response.usage.input_tokens .. ' input tokens and ' .. response.usage.output_tokens .. ' output tokens')
-          vim.g.last_input_tokens = response.usage.input_tokens
-          vim.g.last_output_tokens = response.usage.output_tokens
+          vim.g.chatty_ai_last_input_tokens = response.usage.input_tokens
+          vim.g.chatty_ai_last_output_tokens = response.usage.output_tokens
           content = response.content
           if content[1].type == 'text' then
             context.append_entries({ { type = 'assistant', text = content[1].text } })
@@ -457,11 +458,16 @@ end
 --TODO DESIGN should_stream should be part of config called target_config?
 
 ---@param should_stream boolean
-function M.completion_job(global_config, service_config, source_config, completion_config, target_config, should_stream)
+function M.completion_job(service_name, global_config, service_config, source_config, completion_config, target_config, should_stream)
+  local service = services.get_service(service_name)
+
+  if service == nil then
+    error(service_name .. ' is not registered')
+  end
+
   -- TODO at this point call something in targets that may take action based on the configuration
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
-
 
   log.debug('service config ' .. vim.inspect(service_config))
   log.debug('global config ' .. vim.inspect(global_config))

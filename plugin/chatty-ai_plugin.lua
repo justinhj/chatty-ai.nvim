@@ -4,11 +4,9 @@ if vim.fn.has("nvim-0.9") == 0 then
 end
 
 -- make sure this file is loaded only once
-if vim.g.loaded_chatty_ai_plugin then
+if vim.g.chatty_ai_plugin_loaded then
   return
 end
-vim.g.loaded_chatty_ai_plugin = 1
+vim.g.chatty_ai_plugin_loaded = 1
 
--- create any global command that does not depend on user setup
--- usually it is better to define most commands/mappings in the setup function
--- Be careful to not overuse this file!
+require('chatty-ai.chatty-ai').setup_user_commands()

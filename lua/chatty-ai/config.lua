@@ -7,21 +7,8 @@ local C = require('chatty-ai.completion')
 
 ---@class GlobalConfig
 ---@field timeout_ms number
----@field default_service string
 ---@field context_file_name string
 ---@field context_max_entries number
-
----@class AnthropicConfig
----@field type string
----@field version string
----@field api_key_env_name string
----@field api_key_value string?
----@field completion_fn function
-
----@class OpenAIConfig
----@field api_key_env_name string
----@field api_key_value string?
----@field completion_fn function
 
 ---@class CompletionConfig 
 ---@field system string
@@ -39,7 +26,7 @@ local C = require('chatty-ai.completion')
 
 ---@class ChattyConfig
 ---@field global GlobalConfig
----@field services table<string, AnthropicConfig|OpenAIConfig>
+---@field services table<string>
 ---@field source_configs table<string, table<SourceConfigFn>>
 ---@field completion_configs table<string, CompletionConfig>
 ---@field target_configs table<string, BufferTargetConfig>
@@ -49,22 +36,11 @@ local default_config = {
   -- Global section affects every completion
   global = {
     timeout_ms = 20000,
-    default_service = 'anthropic',
     context_file_name = 'chatty-ai.json',
     context_max_entries = 5,
   },
+  -- User adds the name of any registered services here
   services = {
-    anthropic = {
-      type = 'anthropic',
-      version = '2023-06-01',
-      api_key_env_name = 'ANTHROPIC_API_KEY',
-      completion_fn = C.anthropic_completion,
-    },
-    openai = {
-      type = 'openai',
-      api_key_env_name = 'OPENAI_API_KEY',
-      completion_fn = C.openai_completion,
-    },
   },
   source_configs = {
     input = { S.input },
@@ -124,12 +100,6 @@ M.validate = function()
   local config = vim.g.chatty_ai_config
   assert(config)
   assert(type(config) == 'table')
-
-  -- Check that the default service is defined.
-  -- It's ok if not unless the user tries to use it
-  if not string_matches_table_key(config.services, config.global.default_service) then
-    log.warn('Unknown service provided as default ' .. config.global.default_service)
-  end
 
   -- TODO needs more DRY
   -- TODO these keys can be looked up at runtime no need to do it during validate

@@ -7,7 +7,7 @@ local completion = require('chatty-ai.completion')
 
 -- TODO maybe rename core
 
-local function setup_user_commands()
+function M.setup_user_commands()
 
   -- Enable the user to bring the chat context into view
   -- error if context name not set
@@ -29,8 +29,8 @@ end
 
 -- TODO return the input and output tokens of the last request, stored in global state
 function M.get_status()
-  local last_input_tokens = vim.g.last_input_tokens or 0
-  local last_output_tokens = vim.g.last_output_tokens or 0
+  local last_input_tokens = vim.g.chatty_ai_last_input_tokens or 0
+  local last_output_tokens = vim.g.chatty_ai_last_output_tokens or 0
   return ' >' .. tostring(last_input_tokens) .. ' <' .. tostring(last_output_tokens)
 end
 
@@ -43,20 +43,12 @@ function M.setup(opts)
     return
   end
 
-  setup_user_commands()
+  if vim.g.chatty_ai_is_setup == nil then
+    vim.g.chatty_ai_is_setup = true
+  end
 end
 
-local function config_names_to_configs(service_config_name, source_config_name, completion_config_name, target_config_name)
-  local service_config = vim.g.chatty_ai_config.services[service_config_name]
-  if service_config == nil then
-    log.error('service config not found for ' .. service_config_name)
-    return
-  end
-
-  if service_config_name == nil then
-    service_config_name = vim.g.chatty_ai_config.global.default_service
-  end
-
+local function config_names_to_configs(source_config_name, completion_config_name, target_config_name)
   local source_config = vim.g.chatty_ai_config.source_configs[source_config_name]
   if source_config == nil then
     log.error('source config not found: ' .. source_config_name)
@@ -75,19 +67,24 @@ local function config_names_to_configs(service_config_name, source_config_name, 
     return
   end
 
-  return source_config, completion_config, target_config, service_config
+  return source_config, completion_config, target_config
 end
 
-function M.complete(source_config_name, completion_config_name, target_config_name, should_stream, service_config_name)
-  local source_config, completion_config, target_config, service_config =
-    config_names_to_configs(service_config_name, source_config_name, completion_config_name, target_config_name)
-
-  if source_config == nil or completion_config == nil or target_config == nil or service_config == nil then
-    log.error('Failed to get configs'.. source_config_name .. completion_config_name .. target_config_name .. service_config_name)
+function M.complete(source_config_name, completion_config_name, target_config_name, should_stream)
+  if vim.g.chatty_ai_is_setup ~= true then
+    log.error('Setup needs to be called before complete works.')
     return
   end
 
-  return completion.completion_job(vim.g.chatty_ai_config.global, service_config, source_config, completion_config, target_config, should_stream)
+  local source_config, completion_config, target_config, service_config =
+    config_names_to_configs(source_config_name, completion_config_name, target_config_name)
+
+  if source_config == nil or completion_config == nil or target_config == nil or service_config == nil then
+    log.error('Failed to get configs'.. source_config_name .. completion_config_name .. target_config_name)
+    return
+  end
+
+  return completion.completion_job(vim.g.chatty_ai_config.global, service_config, source_config, completion_config, target_config, should_stream, nil)
 end
 
 return M

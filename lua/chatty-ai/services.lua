@@ -23,6 +23,10 @@ M.unregister_service = function(name)
   M.sources[name] = nil
 end
 
+M.get_service = function(name)
+  return M.services[name]
+end
+
 M.list_services = function()
   local texts = { { "Services\n", 'Title' } }
   for name,source in pairs(M.services) do
