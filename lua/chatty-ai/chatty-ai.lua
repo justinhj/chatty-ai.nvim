@@ -4,6 +4,8 @@ local L = require('plenary.log')
 local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
 local completion = require('chatty-ai.completion')
+local services = require('chatty-ai.services')
+local util = require('chatty-ai.util')
 
 -- TODO maybe rename core
 
@@ -70,21 +72,34 @@ local function config_names_to_configs(source_config_name, completion_config_nam
   return source_config, completion_config, target_config
 end
 
-function M.complete(source_config_name, completion_config_name, target_config_name, should_stream)
+function M.complete(service_name, source_config_name, completion_config_name, target_config_name, should_stream)
   if vim.g.chatty_ai_is_setup ~= true then
+    -- TODO this should happen at a higher level perhaps
     log.error('Setup needs to be called before complete works.')
     return
   end
 
-  local source_config, completion_config, target_config, service_config =
-    config_names_to_configs(source_config_name, completion_config_name, target_config_name)
-
-  if source_config == nil or completion_config == nil or target_config == nil or service_config == nil then
-    log.error('Failed to get configs'.. source_config_name .. completion_config_name .. target_config_name)
+  local found = util.find_string_in_table(vim.g.chatty_ai_config.services, service_name)
+  if found == nil then
+    log.error(service_name .. ' is not found in config.')
     return
   end
 
-  return completion.completion_job(vim.g.chatty_ai_config.global, service_config, source_config, completion_config, target_config, should_stream, nil)
+  local service = services.get_service(service_name)
+  if service == nil then
+    log.error('Service ' .. service_name .. ' is not registered.')
+    return
+  end
+
+  local source_config, completion_config, target_config =
+    config_names_to_configs(source_config_name, completion_config_name, target_config_name)
+
+  if source_config == nil or completion_config == nil or target_config == nil then
+    log.error('Failed to get configs: '.. source_config_name .. completion_config_name .. target_config_name)
+    return
+  end
+
+  return completion.completion_job(service, source_config, completion_config, target_config, should_stream)
 end
 
 return M

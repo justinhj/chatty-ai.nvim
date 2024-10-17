@@ -17,6 +17,15 @@ function M.is_visual_mode()
     return mode == 'v' or mode == 'V' or mode == '\22'
 end
 
+function M.find_string_in_table(tbl, str)
+    for i, value in ipairs(tbl) do
+        if type(value) == "string" and value == str then
+            return i
+        end
+    end
+    return nil
+end
+
 -- This is based on similar code in the fzf-lua project with some modifications
 -- for chatty-ai. In particular if no lines are returned or we are not in visual
 -- mode we return nil, nil

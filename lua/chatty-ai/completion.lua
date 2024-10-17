@@ -455,21 +455,15 @@ M.openai_completion = function(user_prompt, completion_config, openai_config, is
   return "error" -- todo error handling, should call the targets error callback
 end
 
---TODO DESIGN should_stream should be part of config called target_config?
-
 ---@param should_stream boolean
-function M.completion_job(service_name, global_config, service_config, source_config, completion_config, target_config, should_stream)
-  local service = services.get_service(service_name)
-
-  if service == nil then
-    error(service_name .. ' is not registered')
-  end
+function M.completion_job(service, source_config, completion_config, target_config, should_stream)
 
   -- TODO at this point call something in targets that may take action based on the configuration
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
 
-  log.debug('service config ' .. vim.inspect(service_config))
+  log.debug('service ' .. vim.inspect(service))
+  local global_config = vim.g.chatty_ai_config.global
   log.debug('global config ' .. vim.inspect(global_config))
   log.debug('source config ' .. vim.inspect(source_config))
   log.debug('completion config ' .. vim.inspect(completion_config))

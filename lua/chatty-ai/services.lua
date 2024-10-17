@@ -7,6 +7,7 @@ local M = {}
 
 M.services = {}
 
+---@param name string
 M.new = function(name, s)
   local self = setmetatable({}, { __index = M })
   self.name = name
@@ -14,15 +15,19 @@ M.new = function(name, s)
   return self
 end
 
+---@param name string
+---@param s CompletionServiceConfig
 M.register_service = function(name, s)
   local service = M.new(name, s)
   M.services[name] = service
 end
 
+---@param name string
 M.unregister_service = function(name)
   M.sources[name] = nil
 end
 
+---@param name string
 M.get_service = function(name)
   return M.services[name]
 end
