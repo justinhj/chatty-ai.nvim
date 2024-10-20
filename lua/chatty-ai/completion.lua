@@ -6,7 +6,7 @@ local log = L.new({ plugin = 'chatty-ai' })
 local sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 local util = require('chatty-ai.util')
-local context = require('chatty-ai.context')
+local CONTEXT = require('chatty-ai.context')
 local services = require('chatty-ai.services')
 
 local ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
@@ -63,8 +63,7 @@ end
 -- TODO rename context everywhere as context
 -- TODO completion_config is for prompt and system, not needed here.
 -- TODO service_config would be the config of the provided service
----@param service_config CompletionServiceConfig
-M.completion = function(context, service_config, is_stream, global_config, on_complete)
+M.completion = function(service, context, is_stream)
   local done = false
   local res = nil
   local succ = nil
@@ -102,7 +101,7 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
         local response_text, input_tokens, output_tokens = service_config.stream_complete_cb(out)
         vim.g.chatty_ai_last_input_tokens = input_tokens
         vim.g.chatty_ai_last_output_tokens = output_tokens
-        context.append_entries({ { type = 'assistant', text = response_text } })
+        CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
@@ -114,7 +113,7 @@ M.completion = function(context, service_config, is_stream, global_config, on_co
           vim.g.chatty_ai_last_input_tokens = input_tokens
           vim.g.chatty_ai_last_output_tokens = output_tokens
           on_complete(response_text)
-          context.append_entries({ { type = 'assistant', text = response_text } })
+          CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
         end)
       end
     end
@@ -199,7 +198,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
         input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
         vim.g.chatty_ai_last_input_tokens = input_tokens
         vim.g.chatty_ai_last_output_tokens = output_tokens
-        context.append_entries({ { type = 'assistant', text = response_text } })
+        CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
@@ -217,7 +216,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
           vim.g.chatty_ai_last_output_tokens = response.usage.output_tokens
           content = response.content
           if content[1].type == 'text' then
-            context.append_entries({ { type = 'assistant', text = content[1].text } })
+            CONTEXT.append_entries({ { type = 'assistant', text = content[1].text } })
             on_complete(content[1].text)
           else
             error('unexpected response type')
@@ -469,7 +468,6 @@ function M.completion_job(service, source_config, completion_config, target_conf
   log.debug('completion config ' .. vim.inspect(completion_config))
   log.debug('target config ' .. vim.inspect(target_config))
 
-  if false then
   -- When mode is streaming delete the visual selection and stream there
   -- TODO this is probably fine for both modes now
   if should_stream and util.is_visual_mode() then
@@ -484,18 +482,19 @@ function M.completion_job(service, source_config, completion_config, target_conf
     -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
     -- TODO should there be a context just in memory, a default context, lasting only for one execution?
     -- This would be when no context file is set
-    context.append_entries(prompt)
+    CONTEXT.append_entries(prompt)
 
     -- local result =
-    service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
+    M.completion(prompt, completion_config, should_stream, target_cb)
+--    service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
 
+    -- M.completion = function(prompt, context, service, context, is_stream)
     -- if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
     --   target_cb(result)
     -- end
   end
 
   sources.execute_sources(source_config, completion_cb)
-  end
 end
 
 return M
