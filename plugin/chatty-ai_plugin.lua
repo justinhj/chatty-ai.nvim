@@ -8,5 +8,4 @@ if vim.g.chatty_ai_plugin_loaded then
   return
 end
 vim.g.chatty_ai_plugin_loaded = 1
-
 require('chatty-ai.chatty-ai').setup_user_commands()

@@ -60,15 +60,19 @@ local function parse_anthropic_stream_completion(out)
 end
 
 -- Generic configurable completion function
--- TODO rename context everywhere as context
--- TODO completion_config is for prompt and system, not needed here.
+-- TODO DESIGN completion_config is for prompt and system, not needed here.
 -- TODO service_config would be the config of the provided service
-M.completion = function(service, context, is_stream)
+---@param service CompletionServiceConfig
+M.completion = function(service, user_prompt, completion_config, is_stream, on_complete)
   local done = false
   local res = nil
   local succ = nil
 
-  -- Enforce one job at a time, but starting a new job cancels the former
+  -- merging the history with the new prompt
+  user_prompt = extract_text(user_prompt)
+
+  log.debug('user prompt ' .. user_prompt)
+
   if M.current_job then
     M.current_job:shutdown()
     M.current_job = nil
@@ -79,56 +83,85 @@ M.completion = function(service, context, is_stream)
   local error_callback = nil
 
   local stream_callback = function(error, chunk)
-    if error and service_config.stream_error_cb then
-      service_config.stream_error_cb(error)
-    elseif chunk and service_config.stream_cb then
-      service_config.stream_cb(chunk)
+    log.debug('generic stream processing')
+    if error then
+      service.stream_error_cb(error)
+      -- log.debug('received error in anthropic stream ' .. vim.inspect(error))
+    else
+      -- should do what is commented out below and call the cb
+      local text = service.stream_cb(chunk)
+      on_complete(text)
+      -- local data_raw = string.match(chunk, "data: (.+)")
+
+      -- if data_raw then
+      --   local data = vim.json.decode(data_raw)
+
+      --   local content = ''
+      --   if data.delta and data.delta.text then
+      --     content = data.delta.text
+      --     log.debug('streaming ' .. content)
+      --     on_complete(content)
+      --   end
+      -- end
     end
   end
 
   if is_stream then
     stream = vim.schedule_wrap(stream_callback)
 
-    error_callback = function(error)
-      if service_config.error_cb then
-        service_config.error_cb(error)
-      end
+    error_callback = function(err)
+      log.error('error callback' .. tostring(err))
       M.current_job = nil
     end
 
     complete_callback = function(out)
+      -- note that the streaming call back just logs output for now
+      -- TODO it should return generic usage info
+      log.debug('streaming complete callback')
+      -- log.debug(vim.inspect(out))
       vim.schedule(function()
-        local response_text, input_tokens, output_tokens = service_config.stream_complete_cb(out)
+        local response_text, input_tokens, output_tokens = service.stream_complete_cb(out)
+        log.debug('async callback token usage: ' ..
+        input_tokens .. ' input tokens and ' .. output_tokens .. ' output tokens')
         vim.g.chatty_ai_last_input_tokens = input_tokens
         vim.g.chatty_ai_last_output_tokens = output_tokens
-        CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
+        -- TODO enable
+        -- CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
+    -- Non streaming job config
     complete_callback = function(out)
-      local content = nil
+      -- service.complete_cb(out, on_complete)
+      log.debug('synchronous complete callback: ' .. tostring(out.status))
       if out and out.status == 200 then
         vim.schedule(function()
-          local response_text, input_tokens, output_tokens = service_config.complete_cb(out)
-          vim.g.chatty_ai_last_input_tokens = input_tokens
-          vim.g.chatty_ai_last_output_tokens = output_tokens
-          on_complete(response_text)
-          CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
+          local response = service.complete_cb(out)
+          vim.g.chatty_ai_last_input_tokens = response.input_tokens
+          vim.g.chatty_ai_last_output_tokens = response.output_tokens
+          on_complete(response.content)
         end)
       end
     end
   end
 
-  -- TODO pass in config opts
-  local url, headers, body = service_config.configure_call(is_stream, context)
+  log.debug('service ' .. vim.inspect(service))
+  local url, headers, body = service.configure_call(user_prompt, completion_config, is_stream)
+
+  log.debug('url ' .. url)
+  log.debug('headers ' .. vim.inspect(headers))
+  log.debug('body ' .. vim.inspect(body))
 
   M.current_job = curl.post(url, {
     headers = headers,
-    body = body,
+    body = vim.fn.json_encode(body),
     stream = stream,
     callback = complete_callback,
     on_error = error_callback,
+    raw = { '--no-buffer', '-s' },
   })
+
+  log.debug('job started')
 end
 
 
@@ -188,7 +221,6 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
 
     complete_callback = function(out)
       -- note that the streaming call back just logs output for now
-      -- TODO it should return generic usage info
       log.debug('streaming complete callback')
       -- log.debug(vim.inspect(out))
       vim.schedule(function()
@@ -461,12 +493,12 @@ function M.completion_job(service, source_config, completion_config, target_conf
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
 
-  log.debug('service ' .. vim.inspect(service))
-  local global_config = vim.g.chatty_ai_config.global
-  log.debug('global config ' .. vim.inspect(global_config))
-  log.debug('source config ' .. vim.inspect(source_config))
-  log.debug('completion config ' .. vim.inspect(completion_config))
-  log.debug('target config ' .. vim.inspect(target_config))
+  -- log.debug('service ' .. vim.inspect(service))
+  -- local global_config = vim.g.chatty_ai_config.global
+  -- log.debug('global config ' .. vim.inspect(global_config))
+  -- log.debug('source config ' .. vim.inspect(source_config))
+  -- log.debug('completion config ' .. vim.inspect(completion_config))
+  -- log.debug('target config ' .. vim.inspect(target_config))
 
   -- When mode is streaming delete the visual selection and stream there
   -- TODO this is probably fine for both modes now
@@ -485,9 +517,9 @@ function M.completion_job(service, source_config, completion_config, target_conf
     CONTEXT.append_entries(prompt)
 
     -- local result =
-    M.completion(prompt, completion_config, should_stream, target_cb)
---    service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
-
+    M.completion(service, prompt, completion_config, should_stream, target_cb)
+    -- service_config.completion_fn(prompt, completion_config, service_config, should_stream, global_config, target_cb)
+    -- M.anthropic_completion = function(user_prompt, completion_config, anthropic_config, is_stream, global_config, on_complete)
     -- M.completion = function(prompt, context, service, context, is_stream)
     -- if type(result) == 'string' and not should_stream then -- TODO get rid of this with final target implementation
     --   target_cb(result)
