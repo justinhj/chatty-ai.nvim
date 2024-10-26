@@ -33,11 +33,8 @@ M.new = function(name, s)
   return self
 end
 
----@param name string
----@param s CompletionServiceConfig
-M.register_service = function(name, s)
-  local service = M.new(name, s)
-  M.services[name] = service
+M.register_service = function(s)
+  M.services[s.name] = s
 end
 
 ---@param name string
@@ -47,18 +44,13 @@ end
 
 ---@param name string
 M.get_service = function(name)
-  local s = M.services[name]
-  if s ~= nil then 
-    return s.service
-  else
-    return nil
-  end
+  return M.services[name]
 end
 
 M.list_services = function()
   local texts = { { "Services\n", 'Title' } }
   for name,service in pairs(M.services) do
-    table.insert(texts, { name .. '\n', 'Normal' })
+    table.insert(texts, { name .. ' ' .. service.name .. '\n', 'Normal' })
   end
   vim.api.nvim_echo(texts, false, {})
 end

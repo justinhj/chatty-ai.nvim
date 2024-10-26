@@ -39,11 +39,6 @@ end
 function M.setup(opts)
   opts = opts or {}
   config.from_user_opts(opts)
-  local result, err = config.validate()
-  if not result then
-    log.error('Failed to validate config: ' .. err)
-    return
-  end
 
   if vim.g.chatty_ai_is_setup == nil then
     vim.g.chatty_ai_is_setup = true
@@ -76,12 +71,6 @@ function M.complete(service_name, source_config_name, completion_config_name, ta
   if vim.g.chatty_ai_is_setup ~= true then
     -- TODO this should happen at a higher level perhaps
     log.error('Setup needs to be called before complete works.')
-    return
-  end
-
-  local found = util.find_string_in_table(vim.g.chatty_ai_config.services, service_name)
-  if found == nil then
-    log.error(service_name .. ' is not found in config.')
     return
   end
 

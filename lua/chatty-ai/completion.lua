@@ -146,7 +146,7 @@ M.completion = function(service, user_prompt, completion_config, is_stream, on_c
   end
 
   log.debug('service ' .. vim.inspect(service))
-  local url, headers, body = service.configure_call(user_prompt, completion_config, is_stream)
+  local url, headers, body = service:configure_call(user_prompt, completion_config, is_stream)
 
   log.debug('url ' .. url)
   log.debug('headers ' .. vim.inspect(headers))

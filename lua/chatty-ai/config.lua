@@ -1,9 +1,6 @@
 local M = {}
 
-local L = require('plenary.log')
-local log = L.new({ plugin = 'chatty-ai' })
 local S = require('chatty-ai.sources')
-local C = require('chatty-ai.completion')
 
 ---@class GlobalConfig
 ---@field timeout_ms number
@@ -26,7 +23,6 @@ local C = require('chatty-ai.completion')
 
 ---@class ChattyConfig
 ---@field global GlobalConfig
----@field services table<string>
 ---@field source_configs table<string, table<SourceConfigFn>>
 ---@field completion_configs table<string, CompletionConfig>
 ---@field target_configs table<string, BufferTargetConfig>
@@ -38,9 +34,6 @@ local default_config = {
     timeout_ms = 20000,
     context_file_name = 'chatty-ai.json',
     context_max_entries = 5,
-  },
-  -- User adds the name of any registered services here
-  services = {
   },
   source_configs = {
     input = { S.input },
@@ -83,63 +76,6 @@ local default_config = {
     },
   }
 }
-
--- TODO util
-local function string_matches_table_key(tbl, str)
-    for key, _ in pairs(tbl) do
-        if str == key then
-            return true
-        end
-    end
-    return false
-end
-
--- Validate the passed in config, or the current config
--- @param config Config
-M.validate = function()
-  local config = vim.g.chatty_ai_config
-  assert(config)
-  assert(type(config) == 'table')
-
-  -- TODO needs more DRY
-  -- TODO these keys can be looked up at runtime no need to do it during validate
-  -- Verify each defined service
-  for service, service_config in pairs(config.services) do
-    if service_config.type == 'anthropic' then
-      ---@as AnthropicConfig
-      local c = service_config
-      if not service_config.api_key_env_name then
-        return false
-      end
-      local value = os.getenv(c.api_key_env_name)
-      if not value then
-        log.warn('No api key found for ' .. service .. ' (environment variable ' .. c.api_key_env_name .. ')')
-      else
-        log.debug('Found api key for ' .. service)
-        c.api_key_value = value
-      end
-    elseif service_config.type == 'openai' then
-      ---@as OpenAIConfig
-      local c = service_config
-      if not service_config.api_key_env_name then
-        log.error('No api_key_env_name provided for ' .. service)
-        return false
-      end
-      local value = os.getenv(c.api_key_env_name)
-      if not value then
-        log.warn('No api key found for ' .. service .. ' (environment variable ' .. c.api_key_env_name .. ')')
-      else
-        log.debug('Found api key for ' .. service)
-        c.api_key_value = value
-      end
-    end
-  end
-
-  vim.g.chatty_ai_config = config
-
-  log.debug('Config validated')
-  return true
-end
 
 M.from_user_opts = function(user_opts)
   vim.g.chatty_ai_config = user_opts and vim.tbl_deep_extend('force', default_config, user_opts) or default_config
