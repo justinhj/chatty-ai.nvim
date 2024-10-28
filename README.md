@@ -1,17 +1,6 @@
 # chatty-ai.nvim
 
-```
-      _           _   _                     _ 
-     | |         | | | |                   (_)
-  ___| |__   __ _| |_| |_ _   _ ______ __ _ _ 
- / __| '_ \ / _` | __| __| | | |______/ _` | |
-| (__| | | | (_| | |_| |_| |_| |     | (_| | |
- \___|_| |_|\__,_|\__|\__|\__, |      \__,_|_|
-                           __/ |              
-                          |___/          
-```
-
-![chattyailogo](https://github.com/user-attachments/assets/8c97b63e-36f4-48b9-8718-445e2d9e7223)
+<img src="https://github.com/user-attachments/assets/8c97b63e-36f4-48b9-8718-445e2d9e7223" alt="chattyailogo" width="66%">
 
 ## What?
 
