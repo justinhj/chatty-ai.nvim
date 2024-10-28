@@ -11,6 +11,8 @@
                           |___/          
 ```
 
+![chattyailogo](https://github.com/user-attachments/assets/8c97b63e-36f4-48b9-8718-445e2d9e7223)
+
 ## What?
 
 Chatty-AI is a configurable, composable Neovim plugin for interacting with LLM's and writing code.
