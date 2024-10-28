@@ -1,25 +1,49 @@
 # chatty-ai.nvim
 
 ```
-  _____ _           _   _                    _ 
- /  __ \ |         | | | |                  (_)
- | /  \/ |__   __ _| |_| |_ _   _      __ _  _ 
- | |   | '_ \ / _` | __| __| | | |    / _` || |
- | \__/\ | | | (_| | |_| |_| |_| |   | (_| || |
-  \____/_| |_|\__,_|\__|\__|\__, |    \__,_||_|
-                             __/ |             
-                            |___/              
+      _           _   _                     _ 
+     | |         | | | |                   (_)
+  ___| |__   __ _| |_| |_ _   _ ______ __ _ _ 
+ / __| '_ \ / _` | __| __| | | |______/ _` | |
+| (__| | | | (_| | |_| |_| |_| |     | (_| | |
+ \___|_| |_|\__,_|\__|\__|\__, |      \__,_|_|
+                           __/ |              
+                          |___/          
 ```
 
 ## What?
 
+Chatty-AI is a configurable, composable Neovim plugin for interacting with LLM's and writing code.
+
+### Goals
+
+- Nothing going in the background, a programmer driven workflow.
+- Users can add their own chat services using a simple extensible architecture like that of [nvim-cmp](https://github.com/hrsh7th/nvim-cmp). 
+- Build your workflow with a simple composable set of tools.
+
+### Features
+
+- Easy to add support new completion services.
+- Compose different prompt sources into each completion and make your own.
+- Full control over the prompt context and chat history.
+- Toolbar information on token usage etc.
+
+### Future features under consideration
+
+- Lower level interface to LLMS including tokenization/detokenization.
+- Embeddings. Add support for creating embeddings, vector storage and similarity search. (Maybe an external plugin).
+- Support for function calling.
+
 ## Why?
+
+Honestly I made it for mostly for fun, and to provide the exact assistant environment I wanted, but hopefully others will find it useful.
 
 ## How?
 
-## Features
+The plugin is built in lua and relies on the excellent [Plenary]() library to handle the calls to curl which power the completion services.
 
 ## Required dependencies
+
 ### Lua dependencies
 - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 
@@ -54,6 +78,9 @@ require("chatty-ai").setup({})
 
 ## Configuration
 
+### Adding a service
+
+TODO
 
 ## Diagnostics and debugging
 If something breaks you should see a standard Vim error telling you what the problem is. There is some info logging you will find wherever your Neovim cache is `:h stdpath`.
@@ -80,11 +107,8 @@ https://platform.openai.com/docs/guides/text-generation
 ## Related plugins
 
 https://github.com/frankroeder/parrot.nvim
-
 https://github.com/Robitx/gp.nvim
-
 https://github.com/melbaldove/llm.nvim
-
 https://github.com/yacineMTB/dingllm.nvim
 
 ## License and Copyright
