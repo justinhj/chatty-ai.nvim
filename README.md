@@ -80,7 +80,7 @@ For more than just info,warn and error logging you can enable debug logs which s
 
 `DEBUG_PLENARY=true nvim`
 
-## References and inspirations
+## References
 
 ### Ollama
 
@@ -91,7 +91,7 @@ https://ollama.com/library/codellama
 
 https://docs.anthropic.com/en/api/getting-started
 
-### Open AI completinos
+### Open AI completions
 
 https://platform.openai.com/docs/guides/text-generation
 
