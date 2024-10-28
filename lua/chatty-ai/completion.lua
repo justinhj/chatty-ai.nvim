@@ -132,7 +132,6 @@ M.completion = function(service, user_prompt, completion_config, is_stream, on_c
   else
     -- Non streaming job config
     complete_callback = function(out)
-      -- service.complete_cb(out, on_complete)
       log.debug('synchronous complete callback: ' .. tostring(out.status))
       if out and out.status == 200 then
         vim.schedule(function()
@@ -141,6 +140,8 @@ M.completion = function(service, user_prompt, completion_config, is_stream, on_c
           vim.g.chatty_ai_last_output_tokens = response.output_tokens
           on_complete(response.content)
         end)
+      else
+        log.error('Completion failed with status ' .. tostring(out.status))
       end
     end
   end
@@ -167,7 +168,6 @@ end
 
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
----@param anthropic_config AnthropicConfig
 ---@param is_stream boolean
 M.anthropic_completion = function(user_prompt, completion_config, anthropic_config, is_stream, global_config, on_complete)
   local done = false
@@ -267,7 +267,7 @@ M.anthropic_completion = function(user_prompt, completion_config, anthropic_conf
         role = 'user',
       },
     },
-    max_tokens = 4096,   -- todo configurable for each service
+    max_tokens = 8192,   -- todo configurable
     system = completion_config.system,
     temperature = 1.0,   -- between 0.0 and 1.0 where higher is more creative
   }
@@ -387,7 +387,6 @@ end
 
 ---@param user_prompt string
 ---@param completion_config CompletionConfig
----@param openai_config OpenAIConfig
 ---@param is_stream boolean
 M.openai_completion = function(user_prompt, completion_config, openai_config, is_stream, global_config)
   local done = false
