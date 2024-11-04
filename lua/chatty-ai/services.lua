@@ -50,7 +50,7 @@ end
 M.list_services = function()
   local texts = { { "Services\n", 'Title' } }
   for name,service in pairs(M.services) do
-    table.insert(texts, { name .. ' ' .. service.name .. '\n', 'Normal' })
+    table.insert(texts, { service.name .. '\n', 'Normal' })
   end
   vim.api.nvim_echo(texts, false, {})
 end
