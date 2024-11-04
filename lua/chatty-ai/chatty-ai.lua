@@ -11,6 +11,13 @@ local util = require('chatty-ai.util')
 
 function M.setup_user_commands()
 
+  -- Add a system prompt to the context
+  vim.api.nvim_create_user_command('ChattyContextAddSystemPrompt',
+    function ()
+      require('chatty-ai.context').add_system_prompt()
+    end
+    ,{nargs = 0})
+
   -- Enable the user to bring the chat context into view
   -- error if context name not set
   vim.api.nvim_create_user_command('ChattyContextShow',
