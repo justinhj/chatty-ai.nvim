@@ -38,7 +38,7 @@ function M.filetype(callback)
 end
 
 local function execute_sources_internal(source_configs, aggregate_prompt, callback)
-  log.debug('length of source configs is ' .. #source_configs)
+  log.debug('Evaluating ' .. #source_configs ..  ' source configs')
   if #source_configs == 0 then
     local aggregate_normalized_prompt = H.normalize_context(aggregate_prompt)
     callback(aggregate_normalized_prompt)

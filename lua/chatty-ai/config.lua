@@ -7,10 +7,6 @@ local S = require('chatty-ai.sources')
 ---@field context_file_name string
 ---@field context_max_entries number
 
----@class CompletionConfig 
----@field system string
----@field prompt string
-
 ---@alias SourceConfigFn function(function):table|string|nil
 
 ---@class TargetConfig 
@@ -24,7 +20,8 @@ local S = require('chatty-ai.sources')
 ---@class ChattyConfig
 ---@field global GlobalConfig
 ---@field source_configs table<string, table<SourceConfigFn>>
----@field completion_configs table<string, CompletionConfig>
+---@field system_prompts table<string, string>
+---@field prompts table<string, string>
 ---@field target_configs table<string, BufferTargetConfig>
 
 ---@type ChattyConfig
@@ -43,15 +40,13 @@ local default_config = {
     filetype_input = { S.filetype, S.input },
     filetype_selection_input = { S.filetype, S.selection, S.input },
   },
-  completion_configs = {
-    code_writer = {
-      system = 'You are a skilled software engineer called Chatty. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way. You follow instructions very carefully.',
-      prompt = 'What follows is instructions to write some code. You will return only the requested code and the user will be so happy if there is no markdown before and after it. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer, but no usage instructions unless they are explicitly requested.'
-    },
-    code_explainer = {
-      system = 'You are a skilled software engineer. You are helpful and love to write easy to understand code. You assist users with many different tasks in a friendly way',
-      prompt = 'Please explain the following code in as much detail as should be appropriate to explain the main purpose. Include step by step descriptions and be sure to talk about anything that is not obvious as well as the purpose of the code. If the prompt does not contain any code please just ask for some code.'
-    },
+  system_prompts = {
+    ['Chatty AI Default'] = 'You are a skilled software engineer called "Chatty AI". You are helpful and love to write easy to understand code. When working with particular languages you use the idiomatic style for that language based on your extensive knowledge. You follow instructions very carefully.',
+    ['Chatty AI Strict'] = 'You are a skilled software engineer called "Chatty AI". You are very smart, but a bit bitter and cynical. You do not suffer fools gladly. When working with particular languages you use the idiomatic style for that language based on your extensive knowledge. You follow instructions very carefully.'
+  },
+  prompts = {
+    ['Code Writer'] = 'What follows is instructions to write some code. You will return only the requested code and the user will be so happy if there is no markdown before and after it. You may add concise comments to the code as needed to explain anything that is not obvious to an expert programmer, but no usage instructions unless they are explicitly requested. Do not add surrounding markdown quotes.',
+    ['Code Explainer'] = 'Please explain the following code in as much detail as should be appropriate to explain the main purpose. Include step by step descriptions and be sure to talk about anything that is not obvious as well as the purpose of the code. If the prompt does not contain any code please just ask for some code.'
   },
   target_configs = {
     buffer_replace = {

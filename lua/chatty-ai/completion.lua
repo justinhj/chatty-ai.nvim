@@ -25,14 +25,13 @@ end
 
 -- Generic configurable completion function
 ---@param service CompletionServiceConfig
-M.completion = function(service, user_prompt, completion_config, is_stream, on_complete)
+M.completion = function(service, system_prompt, prompts, is_stream, on_complete)
   local done = false
   local res = nil
   local succ = nil
 
   -- TODO merging the context and history with the new prompt
-  user_prompt = extract_text(user_prompt)
-
+  local user_prompt = extract_text(prompts)
   log.debug('user prompt ' .. user_prompt)
 
   if M.current_job then
@@ -92,6 +91,13 @@ M.completion = function(service, user_prompt, completion_config, is_stream, on_c
   end
 
   log.debug('service ' .. vim.inspect(service))
+
+  -- TODO lol
+  local completion_config = {
+    system = system_prompt,
+    prompt = '',
+  }
+
   local url, headers, body = service:configure_call(user_prompt, completion_config, is_stream)
 
   log.debug('url ' .. url)
@@ -111,17 +117,17 @@ M.completion = function(service, user_prompt, completion_config, is_stream, on_c
 end
 
 ---@param should_stream boolean
-function M.completion_job(service, source_config, completion_config, target_config, should_stream)
+function M.completion_job(service, source_config, system_prompt, this_prompt, target_config, should_stream)
 
   -- TODO at this point call something in targets that may take action based on the configuration
   -- For a hacky example let's erase the current selection if there is one
   -- it should generally just set things up for writing
 
-  -- log.debug('service ' .. vim.inspect(service))
+  -- log.debug('service ' .. vim.inspect(service.name))
   -- local global_config = vim.g.chatty_ai_config.global
   -- log.debug('global config ' .. vim.inspect(global_config))
   -- log.debug('source config ' .. vim.inspect(source_config))
-  -- log.debug('completion config ' .. vim.inspect(completion_config))
+  -- log.debug('this prompt' .. vim.inspect(this_prompt))
   -- log.debug('target config ' .. vim.inspect(target_config))
 
   -- When mode is streaming delete the visual selection and stream there
@@ -134,14 +140,16 @@ function M.completion_job(service, source_config, completion_config, target_conf
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
   local target_cb = targets.get_callback(target_config)
-  local completion_cb = function(prompt)
-    -- TODO think about how prompts should be added. Just append, or insert, and handle de-duplication
-    -- TODO should there be a context just in memory, a default context, lasting only for one execution?
-    -- This would be when no context file is set
-    CONTEXT.append_entries(prompt)
+  local completion_cb = function(prompts)
+    -- temp add this prompt to the prompts
+    local this_prompt_entry = { type = 'user', text = this_prompt }
+    table.insert(prompts, this_prompt_entry)
+    CONTEXT.append_entries(prompts)
 
-    -- local result =
-    M.completion(service, prompt, completion_config, should_stream, target_cb)
+    --- WIP you should update the completion call to handle the changes
+    -- TODO may consider not passing the system prompt and prompt here
+    --      but simply take the context when needed
+    M.completion(service, system_prompt, prompts, should_stream, target_cb)
   end
 
   sources.execute_sources(source_config, completion_cb)
