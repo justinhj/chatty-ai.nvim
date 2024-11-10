@@ -5,9 +5,6 @@ local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
 local completion = require('chatty-ai.completion')
 local services = require('chatty-ai.services')
-local util = require('chatty-ai.util')
-
--- TODO maybe rename core
 
 function M.setup_user_commands()
 
@@ -36,7 +33,7 @@ function M.setup_user_commands()
   -- so they can swap between different activities
 end
 
--- TODO return the input and output tokens of the last request, stored in global state
+-- For the status bar
 function M.get_status()
   local last_input_tokens = vim.g.chatty_ai_last_input_tokens or 0
   local last_output_tokens = vim.g.chatty_ai_last_output_tokens or 0

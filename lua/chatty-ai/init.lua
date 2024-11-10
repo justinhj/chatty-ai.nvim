@@ -2,13 +2,13 @@ local M = {}
 
 -- Exposes the public API
 
-local chatty_ai = require('chatty-ai.chatty-ai')
+local core = require('chatty-ai.core')
 local services = require('chatty-ai.services')
 
-M.setup = chatty_ai.setup
-M.complete = chatty_ai.complete
+M.setup = core.setup
+M.complete = core.complete
 
-M.status = chatty_ai.get_status
+M.status = core.get_status
 
 M.list_services = services.list_services
 M.register_service = services.register_service
