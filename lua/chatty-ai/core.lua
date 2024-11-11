@@ -35,6 +35,12 @@ function M.setup_user_commands()
     end
     ,{nargs = 0})
 
+  vim.api.nvim_create_user_command('ChattyContextSetSystemPrompt',
+    function (opts)
+      require('chatty-ai.context').set_system_prompt(opts.args)
+    end
+    ,{nargs = 1})
+
   -- TODO user command to change the context file name
   -- so they can swap between different activities
 end

@@ -144,30 +144,46 @@ end
 
 -- This takes care of ensuring a context alternates between user and assistant prompts
 -- Consecutive user or assistant prompts are merged together
-function M.normalize_context(context)
-  assert(type(context) == 'table', 'context must be a table')
-  local normalized_context = {}
+-- function M.normalize_context(context)
+--   assert(type(context) == 'table', 'context must be a table')
+--   local normalized_context = {}
 
-  log.debug('normalizing ' .. vim.inspect(context))
+--   log.debug('normalizing ' .. vim.inspect(context))
 
-  local previous_type = nil
-  for _, entry in ipairs(context) do
-    if entry.type and is_valid_type(entry.type) then
-      -- Merge consecutive entries of the same type
-      if previous_type == entry.type then
-        local last_entry = normalized_context[#normalized_context]
-        if last_entry.type == entry.type then
-          last_entry.text = last_entry.text .. '\n' .. entry.text
-        end
-      else
-        table.insert(normalized_context, entry)
-      end
-      previous_type = entry.type
+--   local previous_type = nil
+--   for _, entry in ipairs(context) do
+--     if entry.type and is_valid_type(entry.type) then
+--       -- Merge consecutive entries of the same type
+--       if previous_type == entry.type then
+--         local last_entry = normalized_context[#normalized_context]
+--         if last_entry.type == entry.type then
+--           last_entry.text = last_entry.text .. '\n' .. entry.text
+--         end
+--       else
+--         table.insert(normalized_context, entry)
+--       end
+--       previous_type = entry.type
+--     else
+--       log.warn('context entry must have a type field with value "user" or "assistant"')
+--     end
+--   end
+--   return normalized_context
+-- end
+
+-- Sets a system prompt as the first context entry. If an existing system prompt
+-- is found it will be replaced
+function M.set_system_prompt(system_prompt)
+  local system = system_prompt -- TODO string and table handling
+  local context = M.load_context()
+  log.debug('Setting system prompt: ' .. system)
+  if context ~= nil then
+    if #context > 0 and context[1].type == 'system' then
+      context[1].text = system -- overwrite the current system prompt
     else
-      log.warn('context entry must have a type field with value "user" or "assistant"')
+      table.insert(context, 1, { type = 'system', text = system })
     end
+    M.write_context(context)
   end
-  return normalized_context
 end
 
 -- Append a table of entries to the chat context
@@ -183,8 +199,7 @@ function M.append_entries(entries)
       log.debug('appending entry: ' .. vim.inspect(entry))
       table.insert(context, entry)
     end
-    local new_context = M.normalize_context(context)
-    M.write_context(new_context)
+    M.write_context(context)
   end
 end
 return M

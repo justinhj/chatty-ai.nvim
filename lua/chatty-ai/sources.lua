@@ -1,7 +1,6 @@
 local M = {}
 
 local U = require('chatty-ai.util')
-local H = require('chatty-ai.context')
 local L = require('plenary.log')
 local FT = require('plenary.filetype')
 local log = L.new({ plugin = 'chatty-ai' })
@@ -27,7 +26,7 @@ end
 function M.filetype(callback)
   log.debug('getting filetype')
   -- use plenary to get the filetype
-  local filetype = FT.detect(vim.api.nvim_buf_get_name(0))
+  local filetype = FT.detect(vim.api.nvim_buf_get_name(0), {})
   if filetype then
     log.debug('got filetype: ' .. filetype)
     callback('Infer the programming language from the filetype: ' .. filetype)
@@ -40,8 +39,7 @@ end
 local function execute_sources_internal(source_configs, aggregate_prompt, callback)
   log.debug('Evaluating ' .. #source_configs ..  ' source configs')
   if #source_configs == 0 then
-    local aggregate_normalized_prompt = H.normalize_context(aggregate_prompt)
-    callback(aggregate_normalized_prompt)
+    callback(aggregate_prompt)
   else
     local source = table.remove(source_configs, 1)
     local source_callback = function(input)
