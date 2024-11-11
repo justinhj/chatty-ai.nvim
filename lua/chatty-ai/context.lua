@@ -35,6 +35,19 @@ local function get_or_create_chatty_path()
   return path
 end
 
+-- Function to set the context filename, ensuring it ends with .json
+function M.set_name(name)
+  local base_name = name:match("(.+)%..+") or name
+  base_name = base_name .. '.json'
+  local c = vim.g.chatty_ai_config
+  local gc = c.global
+  log.debug('setting context file name to ' .. base_name .. ' it was ' .. gc.context_file_name)
+  gc.context_file_name = base_name
+  c.global = gc
+  vim.g.chatty_ai_config = c
+  log.debug('context name is now ' .. vim.inspect(vim.g.chatty_ai_config.global))
+end
+
 function M.clear_context()
   if(vim.g.chatty_ai_config.global.context_file_name == nil) then
     log.info('no context file will not use context')
@@ -62,6 +75,8 @@ function M.show_context()
   if(vim.g.chatty_ai_config.global.context_file_name == nil) then
     log.info('no context file will not use context')
     return
+  else
+    log.debug('showing context ' .. vim.g.chatty_ai_config.global.context_file_name)
   end
   local path = get_or_create_chatty_path()
   local context_file_name = vim.g.chatty_ai_config.global.context_file_name
