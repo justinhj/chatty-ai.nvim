@@ -2,6 +2,7 @@
 local L = require('plenary.log')
 local log = L.new({ plugin = 'chatty-ai' })
 local Path = require('plenary.path')
+local Sources = require('chatty-ai.sources')
 
 local M = {}
 
@@ -169,6 +170,25 @@ end
 --   end
 --   return normalized_context
 -- end
+
+-- execute the provided sources and add them to the context
+function M.add_sources(source_config_name)
+  if vim.g.chatty_ai_is_setup ~= true then
+    log.error('Please run setup')
+    return
+  end
+
+  local function cb(prompts)
+    M.append_entries(prompts)
+  end
+
+  local source_config = vim.g.chatty_ai_config.source_configs[source_config_name]
+  if source_config ~= nil then
+    Sources.execute_sources(source_config, cb)
+  else
+    log.error(source_config_name .. ' not found in source_configs')
+  end
+end
 
 -- Sets a system prompt as the first context entry. If an existing system prompt
 -- is found it will be replaced

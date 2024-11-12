@@ -40,8 +40,19 @@ function M.setup_user_commands()
         return util.get_table_keys(vim.g.chatty_ai_config.system_prompts)
       end,})
 
-  -- TODO user command to change the context file name
-  -- so they can swap between different activities
+  vim.api.nvim_create_user_command('ChattyContextAddSource',
+    function (opts)
+      if vim.g.chatty_ai_config.source_configs[opts.args] ~= nil then
+        require('chatty-ai.context').add_sources(opts.args)
+      else
+        error(opts.args .. ' is not found in source_configs')
+      end
+    end
+    ,{nargs = 1,
+      complete = function(ArgLead, CmdLine, CursorPos)
+        vim.print(ArgLead .. ' - ' .. CmdLine .. ' - ' .. tostring(CursorPos))
+        return util.get_table_keys(vim.g.chatty_ai_config.source_configs)
+      end,})
 end
 
 -- For the status bar
@@ -60,26 +71,7 @@ function M.setup(opts)
   end
 end
 
-local function config_names_to_configs(source_config_name, system_prompt_name, prompt_name, target_config_name)
-  local source_config = vim.g.chatty_ai_config.source_configs[source_config_name]
-  if source_config == nil then
-    log.error('source config not found: ' .. source_config_name)
-    return
-  end
-
-  local system_prompt = vim.g.chatty_ai_config.system_prompts[system_prompt_name] or system_prompt_name
-  local prompt = vim.g.chatty_ai_config.prompts[prompt_name] or prompt_name
-
-  local target_config = vim.g.chatty_ai_config.target_configs[target_config_name]
-  if target_config == nil then
-    log.error('target config not found for ' .. target_config_name)
-    return
-  end
-
-  return source_config, system_prompt, prompt, target_config
-end
-
-function M.complete(service_name, source_config_name, system_prompt_name, prompt_name, target_config_name, should_stream)
+function M.complete(service_name, target_config_name, should_stream)
   if vim.g.chatty_ai_is_setup ~= true then
     -- TODO this should happen at a higher level perhaps
     log.error('Setup needs to be called before complete works.')
@@ -92,15 +84,13 @@ function M.complete(service_name, source_config_name, system_prompt_name, prompt
     return
   end
 
-  local source_config, system_prompt, prompt, target_config =
-    config_names_to_configs(source_config_name, system_prompt_name, prompt_name, target_config_name)
-
-  if source_config == nil or system_prompt == nil or prompt == nil or target_config == nil then
-    log.error('Failed to get configs: '.. source_config_name .. system_prompt_name .. prompt_name .. target_config_name)
+  local target_config = vim.g.chatty_ai_config.target_configs[target_config_name]
+  if target_config == nil then
+    log.error('Target config not found for ' .. target_config_name)
     return
   end
 
-  return completion.completion_job(service, source_config, system_prompt, prompt, target_config, should_stream)
+  return completion.completion_job(service, target_config, should_stream)
 end
 
 return M

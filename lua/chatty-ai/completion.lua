@@ -3,35 +3,40 @@ local M = {}
 local L = require('plenary.log')
 local curl = require('plenary.curl')
 local log = L.new({ plugin = 'chatty-ai' })
-local sources = require('chatty-ai.sources')
+local Sources = require('chatty-ai.sources')
 local targets = require('chatty-ai.targets')
 local util = require('chatty-ai.util')
-local CONTEXT = require('chatty-ai.context')
+local Context = require('chatty-ai.context')
 
 ---@type Job
 M.current_job = nil
 
--- TODO remove this, it's temporary to just take all text from context
--- and submit as the prompt
+-- TODO for now get all user text as a prompt, this will become more refined
+-- Returns system_prompt, user prompt
 local function extract_text(context)
+  local system = ''
   local result = {}
   for _, entry in ipairs(context) do
-    if entry.text then
+    if entry.text and entry.type == 'user' then
       table.insert(result, entry.text)
+    elseif entry.text and entry.type == 'system' then
+      system = entry.text
     end
   end
-  return table.concat(result, '\n')
+  return system, table.concat(result, '\n')
 end
 
 -- Generic configurable completion function
 ---@param service CompletionServiceConfig
-M.completion = function(service, system_prompt, prompts, is_stream, on_complete)
+M.completion = function(service, is_stream, on_complete)
   local done = false
   local res = nil
   local succ = nil
 
+  local context = Context.load_context()
+
   -- TODO merging the context and history with the new prompt
-  local user_prompt = extract_text(prompts)
+  local system_prompt, user_prompt = extract_text(context)
   log.debug('user prompt ' .. user_prompt)
 
   if M.current_job then
@@ -70,7 +75,7 @@ M.completion = function(service, system_prompt, prompts, is_stream, on_complete)
         vim.g.chatty_ai_last_input_tokens = input_tokens
         vim.g.chatty_ai_last_output_tokens = output_tokens
         -- TODO enable
-        -- CONTEXT.append_entries({ { type = 'assistant', text = response_text } })
+        -- Context.append_entries({ { type = 'assistant', text = response_text } })
       end)
     end
   else
@@ -117,18 +122,7 @@ M.completion = function(service, system_prompt, prompts, is_stream, on_complete)
 end
 
 ---@param should_stream boolean
-function M.completion_job(service, source_config, system_prompt, this_prompt, target_config, should_stream)
-
-  -- TODO at this point call something in targets that may take action based on the configuration
-  -- For a hacky example let's erase the current selection if there is one
-  -- it should generally just set things up for writing
-
-  -- log.debug('service ' .. vim.inspect(service.name))
-  -- local global_config = vim.g.chatty_ai_config.global
-  -- log.debug('global config ' .. vim.inspect(global_config))
-  -- log.debug('source config ' .. vim.inspect(source_config))
-  -- log.debug('this prompt' .. vim.inspect(this_prompt))
-  -- log.debug('target config ' .. vim.inspect(target_config))
+function M.completion_job(service, target_config, should_stream)
 
   -- When mode is streaming delete the visual selection and stream there
   -- TODO this is probably fine for both modes now
@@ -140,19 +134,7 @@ function M.completion_job(service, source_config, system_prompt, this_prompt, ta
   -- completion job needs this partial function which will be called with the result
   -- of the execute sources call
   local target_cb = targets.get_callback(target_config)
-  local completion_cb = function(prompts)
-    -- temp add this prompt to the prompts
-    local this_prompt_entry = { type = 'user', text = this_prompt }
-    table.insert(prompts, this_prompt_entry)
-    CONTEXT.append_entries(prompts)
-
-    --- WIP you should update the completion call to handle the changes
-    -- TODO may consider not passing the system prompt and prompt here
-    --      but simply take the context when needed
-    M.completion(service, system_prompt, prompts, should_stream, target_cb)
-  end
-
-  sources.execute_sources(source_config, completion_cb)
+  M.completion(service, should_stream, target_cb)
 end
 
 return M
