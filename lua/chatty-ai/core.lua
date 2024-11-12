@@ -5,15 +5,9 @@ local log = L.new({ plugin = 'chatty-ai' })
 local config = require('chatty-ai.config')
 local completion = require('chatty-ai.completion')
 local services = require('chatty-ai.services')
+local util = require('chatty-ai.util')
 
 function M.setup_user_commands()
-
-  -- Add a system prompt to the context
-  vim.api.nvim_create_user_command('ChattyContextAddSystemPrompt',
-    function ()
-      require('chatty-ai.context').add_system_prompt()
-    end
-    ,{nargs = 0})
 
   -- Enable the user to bring the chat context into view
   -- error if context name not set
@@ -37,9 +31,14 @@ function M.setup_user_commands()
 
   vim.api.nvim_create_user_command('ChattyContextSetSystemPrompt',
     function (opts)
-      require('chatty-ai.context').set_system_prompt(opts.args)
+      local system_prompt = vim.g.chatty_ai_config.system_prompts[opts.args] or opts.args
+      require('chatty-ai.context').set_system_prompt(system_prompt)
     end
-    ,{nargs = 1})
+    ,{nargs = 1,
+      complete = function(ArgLead, CmdLine, CursorPos)
+        vim.print(ArgLead .. ' - ' .. CmdLine .. ' - ' .. tostring(CursorPos))
+        return util.get_table_keys(vim.g.chatty_ai_config.system_prompts)
+      end,})
 
   -- TODO user command to change the context file name
   -- so they can swap between different activities

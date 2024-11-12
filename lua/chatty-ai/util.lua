@@ -11,6 +11,14 @@ function M.shallowcopy(t)
   return copy
 end
 
+function M.get_table_keys(tbl)
+  local keys = {}
+  for k, _ in pairs(tbl) do
+      table.insert(keys, k)
+  end
+  return keys
+end
+
 -- move to util if it's useful
 function M.is_visual_mode()
     local mode = vim.fn.mode()
