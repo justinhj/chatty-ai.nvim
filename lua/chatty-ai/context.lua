@@ -3,6 +3,7 @@ local L = require('plenary.log')
 local log = L.new({ plugin = 'chatty-ai' })
 local Path = require('plenary.path')
 local Sources = require('chatty-ai.sources')
+local Util = require('chatty-ai.util')
 
 local M = {}
 
@@ -49,23 +50,27 @@ function M.set_name(name)
   log.debug('context name is now ' .. vim.inspect(vim.g.chatty_ai_config.global))
 end
 
-function M.clear_context()
+-- Clear elements from the context except those in the except table
+---@param except table<string>|nil
+function M.clear_context(except)
   if(vim.g.chatty_ai_config.global.context_file_name == nil) then
     log.info('no context file will not use context')
     return
   end
-  local path = get_or_create_chatty_path()
-  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
+  -- local path = get_or_create_chatty_path()
+  -- local context_file_name = vim.g.chatty_ai_config.global.context_file_name
 
-  local p = Path:new(path .. '/' .. context_file_name)
+  -- local p = Path:new(path .. '/' .. context_file_name)
 
-  local file = io.open(p.filename, 'w+')
-  if not file then
-    error('Could not create context file')
-  end
-  file:write(vim.fn.json_encode({}))
-  file:close()
+  -- local file = io.open(p.filename, 'w+')
+  -- if not file then
+  --   error('Could not create context file')
+  -- end
+  -- file:write(vim.fn.json_encode({}))
+  -- file:close()
 
+  local exceptions = except or {}
+  M.remove_entries_except_with_type(exceptions)
   -- Note this opens the buffer, including a new window for it even if it already has one
   -- vim.cmd('edit ' .. p.filename)
   -- This just reloads it if it is loaded
@@ -204,6 +209,20 @@ function M.set_system_prompt(system_prompt)
     end
     M.write_context(context)
   end
+end
+
+-- Append a table of entries to the chat context
+---@param except table<string>
+function M.remove_entries_except_with_type(except)
+  assert(type(except) == 'table', 'entries must be a table')
+  local old_context = M.load_context() or {}
+  local context = {}
+  for _, entry in ipairs(old_context) do
+    if Util.find_string_in_table(except, entry.type) then
+      table.insert(context, entry)
+    end
+  end
+  M.write_context(context)
 end
 
 -- Append a table of entries to the chat context

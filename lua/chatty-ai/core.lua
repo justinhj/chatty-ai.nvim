@@ -25,6 +25,12 @@ function M.setup_user_commands()
 
   vim.api.nvim_create_user_command('ChattyContextClear',
     function ()
+      require('chatty-ai.context').clear_context({'system'})
+    end
+    ,{nargs = 0})
+
+  vim.api.nvim_create_user_command('ChattyContextClearAll',
+    function ()
       require('chatty-ai.context').clear_context()
     end
     ,{nargs = 0})
