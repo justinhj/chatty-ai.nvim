@@ -211,6 +211,16 @@ function M.set_system_prompt(system_prompt)
   end
 end
 
+-- Sets a prompt at the end of the context
+-- is found it will be replaced
+function M.set_prompt(prompt)
+  local p = prompt -- TODO string and table handling
+  local context = M.load_context()
+  log.debug('Adding prompt: ' .. p)
+  table.insert(context, 1, { type = 'user', text = p })
+  M.write_context(context)
+end
+
 -- Append a table of entries to the chat context
 ---@param except table<string>
 function M.remove_entries_except_with_type(except)

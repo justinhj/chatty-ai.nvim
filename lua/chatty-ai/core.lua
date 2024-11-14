@@ -42,8 +42,17 @@ function M.setup_user_commands()
     end
     ,{nargs = 1,
       complete = function(ArgLead, CmdLine, CursorPos)
-        vim.print(ArgLead .. ' - ' .. CmdLine .. ' - ' .. tostring(CursorPos))
         return util.get_table_keys(vim.g.chatty_ai_config.system_prompts)
+      end,})
+
+  vim.api.nvim_create_user_command('ChattyContextAddPrompt',
+    function (opts)
+      local prompt = vim.g.chatty_ai_config.prompts[opts.args] or opts.args
+      require('chatty-ai.context').set_prompt(prompt)
+    end
+    ,{nargs = 1,
+      complete = function(ArgLead, CmdLine, CursorPos)
+        return util.get_table_keys(vim.g.chatty_ai_config.prompts)
       end,})
 
   vim.api.nvim_create_user_command('ChattyContextAddSource',
@@ -56,7 +65,7 @@ function M.setup_user_commands()
     end
     ,{nargs = 1,
       complete = function(ArgLead, CmdLine, CursorPos)
-        vim.print(ArgLead .. ' - ' .. CmdLine .. ' - ' .. tostring(CursorPos))
+        -- vim.print(ArgLead .. ' - ' .. CmdLine .. ' - ' .. tostring(CursorPos))
         return util.get_table_keys(vim.g.chatty_ai_config.source_configs)
       end,})
 end
