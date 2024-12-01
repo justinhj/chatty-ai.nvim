@@ -45,7 +45,7 @@ function M.setup_user_commands()
         return util.get_table_keys(vim.g.chatty_ai_config.system_prompts)
       end,})
 
-  vim.api.nvim_create_user_command('ChattyContextAddPrompt',
+  vim.api.nvim_create_user_command('ChattyContextAddConfigPrompt',
     function (opts)
       local prompt = vim.g.chatty_ai_config.prompts[opts.args] or opts.args
       require('chatty-ai.context').set_prompt(prompt)
@@ -54,6 +54,30 @@ function M.setup_user_commands()
       complete = function(ArgLead, CmdLine, CursorPos)
         return util.get_table_keys(vim.g.chatty_ai_config.prompts)
       end,})
+
+  -- Set the prompt to the user's range selected or if no range use vim.ui.input
+  vim.api.nvim_create_user_command('ChattyContextAddArbitraryPrompt',
+    function (opts)
+      local prompt = ''
+      if opts.range == 2 then
+        -- Get the selected range
+        local start_line = opts.line1
+        local end_line = opts.line2
+        prompt = table.concat(vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false), '\n')
+      elseif opts.args ~= '' then
+        prompt = opts.args
+      else
+        vim.ui.input({ prompt = 'Enter your prompt: ' }, function(input)
+          if input then
+            prompt = input
+          end
+        end)
+      end
+      require('chatty-ai.context').set_prompt(prompt)
+    end,
+    { nargs = '*',
+      range = true,
+    })
 
   vim.api.nvim_create_user_command('ChattyContextAddSource',
     function (opts)
