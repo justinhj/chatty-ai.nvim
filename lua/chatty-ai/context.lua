@@ -53,7 +53,9 @@ end
 -- Clear elements from the context except those in the except table
 ---@param except table<string>|nil
 function M.clear_context(except)
-  if(vim.g.chatty_ai_config.global.context_file_name == nil) then
+  local config = vim.g.chatty_ai_config
+
+  if(config.global.context_file_name == nil) then
     log.info('no context file will not use context')
     return
   end
@@ -71,6 +73,16 @@ function M.clear_context(except)
 
   local exceptions = except or {}
   M.remove_entries_except_with_type(exceptions)
+
+  -- Add the default system prompt
+  if(config.default_system_prompt ~= nil) then
+    if config.system_prompts[config.default_system_prompt] == nil then
+      error("System prompt '" .. config.default_system_prompt .. "' does not exist in config.system_prompts")
+    else
+      M.set_system_prompt(config.system_prompts[config.default_system_prompt])
+    end
+  end
+
   -- Note this opens the buffer, including a new window for it even if it already has one
   -- vim.cmd('edit ' .. p.filename)
   -- This just reloads it if it is loaded
