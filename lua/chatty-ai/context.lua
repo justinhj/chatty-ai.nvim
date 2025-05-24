@@ -228,6 +228,9 @@ end
 function M.set_prompt(prompt)
   local p = prompt -- TODO string and table handling
   local context = M.load_context()
+  if not context then
+    context = {}
+  end
   log.debug('Adding prompt: ' .. p)
   table.insert(context, 1, { type = 'user', text = p })
   M.write_context(context)
