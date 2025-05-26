@@ -96,21 +96,125 @@ function M.show_context()
   else
     log.debug('showing context ' .. vim.g.chatty_ai_config.global.context_file_name)
   end
-  local path = get_or_create_chatty_path()
-  local context_file_name = vim.g.chatty_ai_config.global.context_file_name
-
-  local p = Path:new(path .. '/' .. context_file_name)
-
-  if not p:exists() then
-    local file = io.open(p.filename, 'w+')
-    if not file then
-      error('Could not create context file')
-    end
-    file:write(vim.fn.json_encode({}))
-    file:close()
+  
+  local context = M.load_context()
+  if not context then
+    context = {}
   end
-
-  vim.cmd('edit ' .. p.filename)
+  
+  -- Get screen dimensions
+  local width = vim.o.columns
+  local height = vim.o.lines
+  
+  -- Calculate window size with 4-5 char margins
+  local win_width = width - 10  -- 5 char margin on each side
+  local win_height = height - 6  -- Leave room for header, footer, and margins
+  local row = 2  -- Start a bit down from top
+  local col = 5  -- 5 char left margin
+  
+  -- Create buffer for the popup
+  local buf = vim.api.nvim_create_buf(false, true)
+  
+  -- Function to format context entries as structured text
+  local function format_context_entry(entry, index)
+    local lines = {}
+    table.insert(lines, string.format("[%d] %s:", index, string.upper(entry.type or "unknown")))
+    
+    -- Split text into lines and indent
+    local text = entry.text or ""
+    for line in text:gmatch("[^\r\n]+") do
+      table.insert(lines, "  " .. line)
+    end
+    
+    table.insert(lines, "")  -- Empty line between entries
+    return lines
+  end
+  
+  -- Build content lines
+  local content_lines = {"Context", "═══════", ""}
+  
+  if #context == 0 then
+    table.insert(content_lines, "No context entries found.")
+  else
+    for i, entry in ipairs(context) do
+      local entry_lines = format_context_entry(entry, i)
+      for _, line in ipairs(entry_lines) do
+        table.insert(content_lines, line)
+      end
+    end
+  end
+  
+  -- Add footer
+  table.insert(content_lines, "")
+  table.insert(content_lines, "Press 'q' to close")
+  
+  -- Set buffer content
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, content_lines)
+  
+  -- Set buffer options
+  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+  vim.api.nvim_buf_set_option(buf, 'readonly', true)
+  vim.api.nvim_buf_set_option(buf, 'buftype', 'nofile')
+  vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
+  
+  -- Create floating window
+  local win_opts = {
+    relative = 'editor',
+    width = win_width,
+    height = win_height,
+    row = row,
+    col = col,
+    style = 'minimal',
+    border = 'rounded',
+    title = ' Context Viewer ',
+    title_pos = 'center'
+  }
+  
+  local win = vim.api.nvim_open_win(buf, true, win_opts)
+  
+  -- Set window options
+  vim.api.nvim_win_set_option(win, 'wrap', true)
+  vim.api.nvim_win_set_option(win, 'cursorline', true)
+  
+  -- Set up syntax highlighting for better readability
+  vim.api.nvim_buf_set_option(buf, 'filetype', 'chatty-context')
+  
+  -- Define custom syntax highlighting
+  vim.cmd([[
+    syntax match ChattyContextHeader /^Context$/
+    syntax match ChattyContextSeparator /^═\+$/
+    syntax match ChattyContextEntryHeader /^\[\d\+\] \w\+:$/
+    syntax match ChattyContextFooter /^Press 'q' to close$/
+    
+    highlight link ChattyContextHeader Title
+    highlight link ChattyContextSeparator Comment  
+    highlight link ChattyContextEntryHeader Identifier
+    highlight link ChattyContextFooter Comment
+  ]])
+  
+  -- Set up key mapping to close with 'q'
+  local function close_window()
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_close(win, true)
+    end
+  end
+  
+  -- Set buffer-local keymap for 'q'
+  vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '', {
+    noremap = true,
+    silent = true,
+    callback = close_window
+  })
+  
+  -- Also handle escape key
+  vim.api.nvim_buf_set_keymap(buf, 'n', '<Esc>', '', {
+    noremap = true,
+    silent = true,
+    callback = close_window
+  })
+  
+  -- Set cursor to top of content (after header)
+  vim.api.nvim_win_set_cursor(win, {3, 0})
 end
 
 function M.load_context()
